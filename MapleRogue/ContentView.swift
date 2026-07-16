@@ -7,15 +7,27 @@
 
 import SwiftUI
 
+/// App root: owns the persistent profile and switches between
+/// the landing menu and an active run.
 struct ContentView: View {
+
+    private enum Screen {
+        case menu
+        case game
+    }
+
+    @StateObject private var profileVM = ProfileViewModel()
+    @State private var screen: Screen = .menu
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        switch screen {
+        case .menu:
+            MainMenuView(profileVM: profileVM,
+                         onStartRun: { screen = .game })
+        case .game:
+            GameView(profileVM: profileVM,
+                     onExitToMenu: { screen = .menu })
         }
-        .padding()
     }
 }
 
