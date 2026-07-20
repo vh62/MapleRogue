@@ -39,6 +39,7 @@ final class GameScene: SKScene {
     private var loadout = HeroLoadout()
     private var obstacleNodes: [SKNode] = []
     private var dressingNodes: [SKNode] = []
+    private var guideArrow: SKShapeNode!
 
     private var lastUpdateTime: TimeInterval = 0
     private var heroContactCooldown: TimeInterval = 0
@@ -58,6 +59,7 @@ final class GameScene: SKScene {
         setupCamera()
         setupRoom()
         setupHero()
+        setupGuideArrow()
         setupJoystick()
         setupGachaCallbacks()
         applyCombatStats()
@@ -139,6 +141,27 @@ final class GameScene: SKScene {
         addChild(hero)
         cameraNode.position = hero.position
         viewModel.heroHealthChanged(hero.health)
+    }
+
+    /// Chevron that appears when the room is cleared, orbiting the hero
+    /// and pointing at the open door.
+    private func setupGuideArrow() {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: -10, y: -6))
+        path.addLine(to: CGPoint(x: 10, y: 0))
+        path.addLine(to: CGPoint(x: -10, y: 6))
+        guideArrow = SKShapeNode(path: path)
+        guideArrow.strokeColor = SKColor(red: 1, green: 0.85, blue: 0.25, alpha: 1)
+        guideArrow.lineWidth = 3.5
+        guideArrow.lineCap = .round
+        guideArrow.lineJoin = .round
+        guideArrow.zPosition = 800
+        guideArrow.isHidden = true
+        addChild(guideArrow)
+        guideArrow.run(.repeatForever(.sequence([
+            .fadeAlpha(to: 0.4, duration: 0.5),
+            .fadeAlpha(to: 1.0, duration: 0.5),
+        ])))
     }
 
     private func setupJoystick() {
@@ -333,8 +356,31 @@ final class GameScene: SKScene {
         heroContactCooldown -= deltaTime
 
         let input = joystick.velocity
-        hero.move(input: input)
-        let heroIsMoving = hypot(input.dx, input.dy) > 0.1
+        var effectiveInput = input
+        let playerSteering = hypot(input.dx, input.dy) > 0.1
+
+        // Room cleared: guide the player, and auto-walk the last stretch
+        // to the door when they aren't steering.
+        if door.isOpen && !isTransitioning {
+            let dx = door.position.x - hero.position.x
+            let dy = door.position.y - hero.position.y
+            let doorDistance = hypot(dx, dy)
+
+            guideArrow.isHidden = false
+            let angle = atan2(dy, dx)
+            guideArrow.position = CGPoint(x: hero.position.x + cos(angle) * 70,
+                                          y: hero.position.y + sin(angle) * 70)
+            guideArrow.zRotation = angle
+
+            if !playerSteering && doorDistance < 260 && doorDistance > 1 {
+                effectiveInput = CGVector(dx: dx / doorDistance, dy: dy / doorDistance)
+            }
+        } else {
+            guideArrow.isHidden = true
+        }
+
+        hero.move(input: effectiveInput)
+        let heroIsMoving = hypot(effectiveInput.dx, effectiveInput.dy) > 0.1
 
         for enemy in enemies {
             enemy.update(heroPosition: hero.position, deltaTime: deltaTime)
