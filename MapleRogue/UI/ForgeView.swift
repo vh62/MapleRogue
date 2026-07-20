@@ -1,11 +1,18 @@
 import SwiftUI
 
-/// The Forge tab: starforce your weapon between runs.
-/// Success adds a star (+8% ATK), fail wastes the mesos, destroy loses the weapon.
+/// The Forge tab: two enhancement paths on your equipped gear.
+/// Starforce — stars on the weapon, destroy risk. Cubes — reroll potential
+/// stat lines and gamble on rank-ups, with pity.
 struct ForgeView: View {
+
+    private enum Mode: String, CaseIterable {
+        case starforce = "Starforce"
+        case cube = "Cubes"
+    }
 
     @ObservedObject var profileVM: ProfileViewModel
 
+    @State private var mode: Mode = .starforce
     @State private var lastOutcome: StarforceOutcome?
     @State private var isRolling = false
     @State private var shakeOffset: CGFloat = 0
@@ -25,15 +32,38 @@ struct ForgeView: View {
                     Text("Keep running Henesys Ruins to level up")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.4))
+
+                    #if DEBUG
+                    Button {
+                        profileVM.debugBoost()
+                    } label: {
+                        Text("DEV: +3000 XP, +5000 mesos")
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.orange, in: Capsule())
+                    }
+                    .padding(.top, 8)
+                    #endif
                 }
                 .padding(.vertical, 50)
-            } else if let weapon = profileVM.forgeTarget {
-                weaponCard(weapon)
-                oddsPanel(weapon)
-                outcomeBanner
-                enhanceButton(weapon)
             } else {
-                noWeaponPanel
+                modePicker
+
+                switch mode {
+                case .starforce:
+                    if let weapon = profileVM.forgeTarget {
+                        weaponCard(weapon)
+                        oddsPanel(weapon)
+                        outcomeBanner
+                        enhanceButton(weapon)
+                    } else {
+                        noWeaponPanel
+                    }
+                case .cube:
+                    CubeSection(profileVM: profileVM)
+                }
             }
 
             Spacer()
@@ -45,7 +75,7 @@ struct ForgeView: View {
 
     private var header: some View {
         VStack(spacing: 6) {
-            Text("Starforce Forge")
+            Text("Forge")
                 .font(.system(size: 27, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
             HStack(spacing: 5) {
@@ -53,6 +83,24 @@ struct ForgeView: View {
                 Text("\(profileVM.profile.mesos) mesos")
                     .font(.system(size: 14, weight: .heavy, design: .rounded))
                     .foregroundStyle(.yellow)
+            }
+        }
+    }
+
+    private var modePicker: some View {
+        HStack(spacing: 8) {
+            ForEach(Mode.allCases, id: \.self) { candidate in
+                Button {
+                    mode = candidate
+                } label: {
+                    Text(candidate.rawValue)
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .foregroundStyle(mode == candidate ? .black : .white.opacity(0.6))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(mode == candidate ? AnyShapeStyle(.yellow) : AnyShapeStyle(.white.opacity(0.08)),
+                                    in: RoundedRectangle(cornerRadius: 12))
+                }
             }
         }
     }

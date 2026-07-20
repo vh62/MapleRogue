@@ -87,6 +87,19 @@ final class ProfileViewModel: ObservableObject {
         return outcome
     }
 
+    #if DEBUG
+    /// Dev-only: grants mesos, gems, and levels for feature testing.
+    /// Compiled out of release builds.
+    func debugBoost() {
+        profile.mesos += 5000
+        profile.gems += 200
+        let result = LevelCurve.apply(xp: 3000, toLevel: profile.level, xp: profile.xp)
+        profile.level = result.level
+        profile.xp = result.xp
+        persist()
+    }
+    #endif
+
     // MARK: - Feature gates (unlock by account level)
 
     enum FeatureGate: Int {
@@ -175,6 +188,73 @@ final class ProfileViewModel: ObservableObject {
     /// Flat HP from all equipped gear.
     var gearBonusHP: Int {
         equippedItems.reduce(0) { $0 + $1.bonusHP }
+    }
+
+    /// Full meta-progression contribution to a run, cube potentials included.
+    var heroBuild: HeroBuild {
+        let items = equippedItems
+        return HeroBuild(
+            atkPercent: items.reduce(0) { $0 + $1.atkPercent },
+            bonusHP: items.reduce(0) { $0 + $1.bonusHP },
+            critRatePercent: items.reduce(0) { $0 + $1.potentialTotal(.critRate) },
+            critDmgPercent: items.reduce(0) { $0 + $1.potentialTotal(.critDmg) },
+            moveSpeedPercent: items.reduce(0) { $0 + $1.potentialTotal(.moveSpeed) })
+    }
+
+    // MARK: - Cubes
+
+    private var cubeSystem = CubeSystem()
+
+    func canAffordCube(_ cube: CubeType) -> Bool {
+        profile.mesos >= cube.costMesos && profile.gems >= cube.costGems
+    }
+
+    /// Uses a cube on an owned item. Returns nil if not owned or unaffordable.
+    func useCube(_ cube: CubeType, on itemID: UUID) -> CubeSystem.Result? {
+        guard let index = profile.gearInventory.firstIndex(where: { $0.id == itemID }),
+              canAffordCube(cube) else { return nil }
+
+        profile.mesos -= cube.costMesos
+        profile.gems -= cube.costGems
+        let result = cubeSystem.use(cube, on: &profile.gearInventory[index])
+        persist()
+        return result
+    }
+
+    /// Premium roll awaiting a keep-or-replace decision.
+    /// In-memory only: if the app dies mid-choice, the old lines survive.
+    @Published private(set) var pendingCube: (itemID: UUID, roll: CubeSystem.PendingRoll)?
+
+    /// Premium (Black Cube) use: pays, rolls, and either auto-applies
+    /// (rank-up / empty item) or parks the roll for the player's decision.
+    func usePremiumCube(on itemID: UUID) {
+        let cube = CubeType.premium
+        guard let index = profile.gearInventory.firstIndex(where: { $0.id == itemID }),
+              canAffordCube(cube) else { return }
+
+        profile.mesos -= cube.costMesos
+        profile.gems -= cube.costGems
+        let roll = cubeSystem.roll(cube, on: &profile.gearInventory[index])
+        persist()   // pity/rank/payment always commit immediately
+
+        pendingCube = roll.autoApplied ? nil : (itemID, roll)
+        if roll.autoApplied {
+            lastAutoAppliedRoll = roll
+        }
+    }
+
+    /// Auto-applied premium result (rank-up), for UI celebration.
+    @Published private(set) var lastAutoAppliedRoll: CubeSystem.PendingRoll?
+
+    /// Resolves the parked premium roll.
+    func resolvePendingCube(takeNew: Bool) {
+        guard let pending = pendingCube else { return }
+        if takeNew,
+           let index = profile.gearInventory.firstIndex(where: { $0.id == pending.itemID }) {
+            profile.gearInventory[index].setPotential(pending.roll.newLines)
+            persist()
+        }
+        pendingCube = nil
     }
 
     func switchPreset(to index: Int) {

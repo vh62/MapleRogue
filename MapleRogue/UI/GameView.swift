@@ -46,7 +46,6 @@ struct GameView: View {
         GameScene(viewModel: viewModel,
                   size: CGSize(width: 750, height: 1334),
                   heroClass: profileVM.selectedClass,
-                  weaponBonusPercent: profileVM.gearAtkPercent,
-                  bonusHP: profileVM.gearBonusHP)
+                  build: profileVM.heroBuild)
     }
 }
