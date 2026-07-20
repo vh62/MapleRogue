@@ -149,6 +149,47 @@ struct StarforceTests {
     }
 }
 
+struct PowerRatingTests {
+
+    private let baseClass = ClassRegistry.all[0]   // Dark Knight
+
+    @Test func knownComputation() {
+        // Empty build: ATK 14, APS 1/0.6, crit 5%×0.5 → factor 1.025,
+        // DPS = 14 × 1.6667 × 1.025 = 23.9167; EHP 130.
+        // Power = 23.9167×8 + 130×1.5 = 191.33 + 195 = 386 (×1 mobility).
+        let power = PowerRating.compute(heroClass: baseClass, build: HeroBuild())
+        #expect(power == 386)
+    }
+
+    @Test func everyAttributeRaisesPower() {
+        let base = PowerRating.compute(heroClass: baseClass, build: HeroBuild())
+
+        var build = HeroBuild(); build.atkPercent = 20
+        #expect(PowerRating.compute(heroClass: baseClass, build: build) > base)
+
+        build = HeroBuild(); build.bonusHP = 50
+        #expect(PowerRating.compute(heroClass: baseClass, build: build) > base)
+
+        build = HeroBuild(); build.critRatePercent = 10
+        #expect(PowerRating.compute(heroClass: baseClass, build: build) > base)
+
+        build = HeroBuild(); build.critDmgPercent = 20
+        #expect(PowerRating.compute(heroClass: baseClass, build: build) > base)
+
+        build = HeroBuild(); build.moveSpeedPercent = 10
+        #expect(PowerRating.compute(heroClass: baseClass, build: build) > base)
+    }
+
+    @Test func classesAreComparable() {
+        // No class should dominate purely by formula shape.
+        let powers = ClassRegistry.all.map {
+            PowerRating.compute(heroClass: $0, build: HeroBuild())
+        }
+        let spread = Double(powers.max()!) / Double(powers.min()!)
+        #expect(spread < 1.5, "class base power spread \(spread) too wide: \(powers)")
+    }
+}
+
 struct RunLevelingTests {
 
     @Test func curveValues() {

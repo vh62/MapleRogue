@@ -16,6 +16,7 @@ struct ForgeView: View {
     @State private var selectedSlot: GearSlot = .weapon
     @State private var selectedItemID: UUID?
     @State private var lastOutcome: StarforceOutcome?
+    @State private var powerGain: Int = 0
     @State private var isRolling = false
     @State private var shakeOffset: CGFloat = 0
 
@@ -193,7 +194,7 @@ struct ForgeView: View {
     private var outcomeBanner: some View {
         switch lastOutcome {
         case .success(let stars):
-            Text("SUCCESS! ★\(stars)")
+            Text(powerGain > 0 ? "SUCCESS! ★\(stars)  ·  +\(powerGain) Power" : "SUCCESS! ★\(stars)")
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(.green)
         case .fail:
@@ -270,11 +271,13 @@ struct ForgeView: View {
             shakeOffset = 5
         }
 
+        let powerBefore = profileVM.power
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
             shakeOffset = 0
             withAnimation(.bouncy) {
                 lastOutcome = profileVM.attemptStarforce(on: item.id)
             }
+            powerGain = profileVM.power - powerBefore
             isRolling = false
         }
     }

@@ -21,6 +21,7 @@ struct CubeSection: View {
     @State private var selectedItemID: UUID?
     @State private var selectedCube: String = CubeType.basic.id
     @State private var lastResult: CubeSystem.Result?
+    @State private var powerGain: Int = 0
 
     private var cube: CubeType {
         selectedCube == CubeType.premium.id ? .premium : .basic
@@ -111,7 +112,9 @@ struct CubeSection: View {
                         .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                 }
                 Button {
+                    let powerBefore = profileVM.power
                     profileVM.resolvePendingCube(takeNew: true)
+                    powerGain = profileVM.power - powerBefore
                 } label: {
                     Text("Take New")
                         .font(.system(size: 14, weight: .heavy, design: .rounded))
@@ -193,6 +196,12 @@ struct CubeSection: View {
                 }
             }
 
+            if powerGain != 0 {
+                Text(powerGain > 0 ? "+\(powerGain) Power" : "\(powerGain) Power")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(powerGain > 0 ? .green : Color(red: 1, green: 0.45, blue: 0.4))
+            }
+
             if let result = lastResult, result.rankedUp {
                 Text("RANK UP → \(result.newRank.displayName.uppercased())!")
                     .font(.system(size: 15, weight: .black, design: .rounded))
@@ -217,6 +226,7 @@ struct CubeSection: View {
         let costLabel = isPremium ? "\(cube.costGems) gems" : "\(cube.costMesos) mesos"
 
         return Button {
+            let powerBefore = profileVM.power
             withAnimation(.bouncy) {
                 if isPremium {
                     profileVM.usePremiumCube(on: item.id)
@@ -224,6 +234,7 @@ struct CubeSection: View {
                     lastResult = profileVM.useCube(cube, on: item.id)
                 }
             }
+            powerGain = profileVM.power - powerBefore
         } label: {
             Text("\(cube.name.uppercased())  ·  \(costLabel)")
                 .font(.system(size: 16, weight: .black, design: .rounded))

@@ -119,6 +119,9 @@ private struct HomeTab: View {
                 Text("Adventurer")
                     .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
+                Text("⚡\(profileVM.power)")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundStyle(Color.mrYellow)
             }
             .padding(.leading, 6)
             .padding(.trailing, 12)

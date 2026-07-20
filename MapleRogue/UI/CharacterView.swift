@@ -81,6 +81,7 @@ struct CharacterView: View {
                       isEquipped: selectionIsEquipped,
                       mesos: profileVM.profile.mesos,
                       canWear: profileVM.canWear(item),
+                      powerDelta: profileVM.power(with: item) - profileVM.power,
                       onEquip: {
                           if profileVM.equip(item) {
                               showToast("\(item.name) equipped!")
@@ -247,6 +248,7 @@ struct CharacterView: View {
         let hp = heroClass.maxHP + profileVM.gearBonusHP
 
         return HStack(spacing: 10) {
+            statChip("⚡ \(profileVM.power) POWER")
             statChip("⚔ \(atk) ATK")
             statChip("♥ \(hp) HP")
         }
@@ -462,6 +464,7 @@ private struct ItemSheet: View {
     let isEquipped: Bool
     let mesos: Int
     let canWear: Bool
+    let powerDelta: Int
     let onEquip: () -> Void
     let onUpgrade: () -> Void
     let onClose: () -> Void
@@ -598,6 +601,12 @@ private struct ItemSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !isEquipped && powerDelta != 0 {
+                Text(powerDelta > 0 ? "Equip: +\(powerDelta) Power" : "Equip: \(powerDelta) Power")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(powerDelta > 0 ? Color.ctGreenLight : Color(red: 1, green: 0.45, blue: 0.4))
+            }
 
             HStack(spacing: 10) {
                 Button(action: onClose) {

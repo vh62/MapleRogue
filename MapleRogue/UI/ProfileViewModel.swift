@@ -195,13 +195,31 @@ final class ProfileViewModel: ObservableObject {
 
     /// Full meta-progression contribution to a run, cube potentials included.
     var heroBuild: HeroBuild {
-        let items = equippedItems
-        return HeroBuild(
-            atkPercent: items.reduce(0) { $0 + $1.atkPercent },
-            bonusHP: items.reduce(0) { $0 + $1.bonusHP },
+        build(from: equippedItems)
+    }
+
+    /// Every attribute contributes: account level adds a small global bonus
+    /// (+1% ATK, +2 HP per level) on top of the equipped set.
+    private func build(from items: [GearItem]) -> HeroBuild {
+        HeroBuild(
+            atkPercent: items.reduce(0) { $0 + $1.atkPercent } + profile.level,
+            bonusHP: items.reduce(0) { $0 + $1.bonusHP } + profile.level * 2,
             critRatePercent: items.reduce(0) { $0 + $1.potentialTotal(.critRate) },
             critDmgPercent: items.reduce(0) { $0 + $1.potentialTotal(.critDmg) },
             moveSpeedPercent: items.reduce(0) { $0 + $1.potentialTotal(.moveSpeed) })
+    }
+
+    // MARK: - Combat Power
+
+    var power: Int {
+        PowerRating.compute(heroClass: selectedClass, build: heroBuild)
+    }
+
+    /// Hypothetical power if `item` were equipped in its slot.
+    func power(with item: GearItem) -> Int {
+        var items = equippedItems.filter { $0.slot != item.slot }
+        items.append(item)
+        return PowerRating.compute(heroClass: selectedClass, build: build(from: items))
     }
 
     // MARK: - Cubes
