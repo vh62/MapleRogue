@@ -237,13 +237,9 @@ final class GameScene: SKScene {
         goldOrbs.drop(from: dead, in: self)
         viewModel.xpEarned(dead.xpValue)
         viewModel.recordKill()
-        if dead.isElite {
-            viewModel.tokenEarned()   // elites drop a bonus skill token
-        }
         if enemies.isEmpty {
             door.open()
             SoundSystem.shared.play(.doorOpen, in: self)
-            viewModel.tokenEarned()   // 1 skill token per room cleared
             viewModel.xpEarned(XPReward.roomCleared)
             viewModel.recordRoomCleared()
         }
@@ -267,15 +263,10 @@ final class GameScene: SKScene {
             return
         }
 
-        // Gacha after every cleared room (when there's a token to spend) —
-        // the build should evolve constantly, Archero-style.
-        if viewModel.skillTokens > 0 {
-            viewModel.beginGacha()
-            isPaused = true
-            return   // onGachaDismissed continues via performRoomTransition()
-        }
-
-        performRoomTransition()
+        // Pick-1-of-3 skill choice after every cleared room.
+        viewModel.beginSkillChoice()
+        isPaused = true
+        // onGachaDismissed continues via performRoomTransition()
     }
 
     private func performRoomTransition() {

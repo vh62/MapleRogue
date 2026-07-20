@@ -67,7 +67,7 @@ enum EnemyFactory {
     static func slime(elite: Bool = false) -> EnemyNode {
         EnemyNode(health: Health(max: scaled(30, elite: elite, by: 3)),
                   contactDamage: scaled(10, elite: elite, by: 2),
-                  goldValue: scaled(5, elite: elite, by: 4),
+                  goldValue: scaled(5, elite: elite, by: 6),
                   xpValue: scaled(2, elite: elite, by: 3),
                   isElite: elite,
                   behavior: SlimeBehavior(),
@@ -78,7 +78,7 @@ enum EnemyFactory {
     static func mushroom(elite: Bool = false) -> EnemyNode {
         EnemyNode(health: Health(max: scaled(50, elite: elite, by: 3)),
                   contactDamage: scaled(15, elite: elite, by: 2),
-                  goldValue: scaled(12, elite: elite, by: 4),
+                  goldValue: scaled(12, elite: elite, by: 6),
                   xpValue: scaled(5, elite: elite, by: 3),
                   isElite: elite,
                   behavior: MushroomBehavior(),
@@ -89,7 +89,7 @@ enum EnemyFactory {
     static func boogie(elite: Bool = false) -> EnemyNode {
         EnemyNode(health: Health(max: scaled(20, elite: elite, by: 3)),
                   contactDamage: scaled(8, elite: elite, by: 2),
-                  goldValue: scaled(10, elite: elite, by: 4),
+                  goldValue: scaled(10, elite: elite, by: 6),
                   xpValue: scaled(4, elite: elite, by: 3),
                   isElite: elite,
                   behavior: BoogieBehavior(),

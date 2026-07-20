@@ -8,7 +8,7 @@ final class GameViewModel: ObservableObject {
     enum Phase {
         case playing
         case paused
-        case gacha
+        case skillChoice
         case dead
         case victory
     }
@@ -20,17 +20,14 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var totalRooms: Int = 8
     @Published private(set) var phase: Phase = .playing
     @Published private(set) var gold: Int = 0
-    @Published private(set) var skillTokens: Int = 0
     /// Non-nil while a boss fight is active.
     @Published private(set) var bossHealthFraction: Double?
     @Published private(set) var bossName: String = ""
-    @Published private(set) var lastPull: SkillDefinition?
+    @Published private(set) var offeredSkills: [SkillDefinition] = []
     @Published private(set) var acquiredSkills: [SkillDefinition] = []
 
     private var wallet = Wallet()
-    private let gachaMachine = GachaMachine()
-
-    var pullsUntilPity: Int { gachaMachine.pullsUntilPity }
+    private var skillChooser = SkillChooser()
 
     /// Set by the scene: applies a pulled skill to the live run.
     var onSkillAcquired: ((SkillDefinition) -> Void)?
@@ -143,29 +140,28 @@ final class GameViewModel: ObservableObject {
         bankRunOnce(victory: false)
     }
 
-    // MARK: - Gacha
+    // MARK: - Skill choice (pick 1 of 3, Archero-style)
 
-    func tokenEarned(_ count: Int = 1) {
-        skillTokens += count
+    func beginSkillChoice() {
+        offeredSkills = skillChooser.offer(from: SkillRegistry.all)
+        phase = .skillChoice
     }
 
-    func beginGacha() {
-        lastPull = nil
-        phase = .gacha
-    }
-
-    func pullSkill() {
-        guard skillTokens > 0 else { return }
-        skillTokens -= 1
-        let skill = gachaMachine.pull(from: SkillRegistry.all)
-        lastPull = skill
+    func chooseSkill(_ skill: SkillDefinition) {
+        guard offeredSkills.contains(where: { $0.id == skill.id }) else { return }
         acquiredSkills.append(skill)
         onSkillAcquired?(skill)
+        finishSkillChoice()
     }
 
-    func finishGacha() {
+    /// Grants nothing — for when every offer would be a dead pick.
+    func skipSkillChoice() {
+        finishSkillChoice()
+    }
+
+    private func finishSkillChoice() {
+        offeredSkills = []
         phase = .playing
-        lastPull = nil
         onGachaDismissed?()
     }
 
@@ -178,8 +174,7 @@ final class GameViewModel: ObservableObject {
         currentRoom = 1
         wallet = Wallet()
         gold = 0
-        skillTokens = 0
-        lastPull = nil
+        offeredSkills = []
         acquiredSkills = []
         bossHealthFraction = nil
         runBanked = false

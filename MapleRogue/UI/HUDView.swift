@@ -16,7 +16,6 @@ struct HUDView: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     roomCounter
                     goldCounter
-                    tokenCounter
                 }
             }
             .padding(.horizontal, 20)
@@ -109,20 +108,6 @@ struct HUDView: View {
                 .frame(width: 34, height: 34)
                 .background(.black.opacity(0.5), in: Circle())
         }
-    }
-
-    private var tokenCounter: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "ticket.fill")
-                .font(.system(size: 11))
-                .foregroundStyle(.cyan)
-            Text("\(viewModel.skillTokens)")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundStyle(.cyan)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 5)
-        .background(.black.opacity(0.5), in: Capsule())
     }
 
     private var roomCounter: some View {

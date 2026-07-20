@@ -1,111 +1,94 @@
 import SwiftUI
 
-/// Full-screen gacha shown between rooms. Pull skills with tokens,
-/// then continue the run.
+/// Post-room skill chooser: 3 rarity-colored cards, tap one to take it
+/// and continue immediately. Fast by design — one tap resolves it.
 struct GachaOverlayView: View {
 
     @ObservedObject var viewModel: GameViewModel
+    @State private var chosenID: String?
 
     var body: some View {
-        if viewModel.phase == .gacha {
+        if viewModel.phase == .skillChoice {
             ZStack {
-                Color.black.opacity(0.85).ignoresSafeArea()
+                Color.black.opacity(0.8).ignoresSafeArea()
 
-                VStack(spacing: 20) {
-                    Text("SKILL GACHA")
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                VStack(spacing: 22) {
+                    Text("CHOOSE A SKILL")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .kerning(1)
                         .foregroundStyle(.yellow)
 
-                    HStack(spacing: 16) {
-                        Label("\(viewModel.skillTokens)", systemImage: "ticket.fill")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundStyle(.cyan)
-                        Text("Pity in \(viewModel.pullsUntilPity)")
-                            .font(.system(size: 14, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.6))
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.offeredSkills) { skill in
+                            skillCard(skill)
+                        }
                     }
+                    .padding(.horizontal, 16)
 
-                    resultCard
-                        .frame(height: 200)
-
-                    oddsTable
-
-                    Button(action: viewModel.pullSkill) {
-                        Text("PULL  (1 token)")
-                            .font(.system(size: 19, weight: .heavy, design: .rounded))
-                            .foregroundStyle(viewModel.skillTokens > 0 ? .black : .white.opacity(0.4))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(viewModel.skillTokens > 0 ? .yellow : Color.white.opacity(0.1),
-                                        in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .disabled(viewModel.skillTokens == 0)
-                    .padding(.horizontal, 40)
-
-                    Button(action: viewModel.finishGacha) {
-                        Text("Continue Run")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 10)
-                            .background(.white.opacity(0.15), in: Capsule())
+                    Button {
+                        viewModel.skipSkillChoice()
+                    } label: {
+                        Text("Skip")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 8)
+                            .background(.white.opacity(0.08), in: Capsule())
                     }
                 }
-                .padding(24)
             }
+            .transition(.opacity)
+            .onAppear { chosenID = nil }
         }
     }
 
-    @ViewBuilder
-    private var resultCard: some View {
-        if let skill = viewModel.lastPull {
-            VStack(spacing: 10) {
+    private func skillCard(_ skill: SkillDefinition) -> some View {
+        let tint = color(for: skill.rarity)
+        let isChosen = chosenID == skill.id
+
+        return Button {
+            guard chosenID == nil else { return }
+            chosenID = skill.id
+            // Brief beat so the pick lands visually before the run resumes.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                viewModel.chooseSkill(skill)
+            }
+        } label: {
+            VStack(spacing: 8) {
                 Text(skill.rarity.displayName.uppercased())
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
-                    .foregroundStyle(color(for: skill.rarity))
-                Text(skill.name)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text(skill.blurb)
-                    .font(.system(size: 16, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(color(for: skill.rarity).opacity(0.12))
-                    .stroke(color(for: skill.rarity), lineWidth: 2)
-            )
-            .padding(.horizontal, 40)
-            .transition(.scale(scale: 0.7).combined(with: .opacity))
-            .id(viewModel.acquiredSkills.count)   // re-animate every pull
-            .animation(.bouncy(duration: 0.4), value: viewModel.acquiredSkills.count)
-        } else {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(.white.opacity(0.05))
-                .stroke(.white.opacity(0.2), style: StrokeStyle(lineWidth: 2, dash: [8]))
-                .overlay(
-                    Text("?")
-                        .font(.system(size: 56, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.3))
-                )
-                .padding(.horizontal, 40)
-        }
-    }
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .kerning(0.5)
+                    .foregroundStyle(tint)
 
-    /// App Store guideline 3.1.1 requires disclosing gacha odds.
-    private var oddsTable: some View {
-        HStack(spacing: 14) {
-            ForEach(Rarity.allCases, id: \.self) { rarity in
-                VStack(spacing: 2) {
-                    Text(rarity.displayName)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(color(for: rarity))
-                    Text("\(Int(rarity.weight))%")
-                        .font(.system(size: 11, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
-                }
+                Circle()
+                    .fill(tint.opacity(0.25))
+                    .overlay(Circle().stroke(tint, lineWidth: 2))
+                    .frame(width: 44, height: 44)
+
+                Text(skill.name)
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+
+                Text(skill.blurb)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.65))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
+            .frame(maxWidth: .infinity, minHeight: 160)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 8)
+            .background(tint.opacity(isChosen ? 0.3 : 0.1),
+                        in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16)
+                .stroke(tint, lineWidth: isChosen ? 3 : 1.5))
+            .scaleEffect(isChosen ? 1.06 : (chosenID != nil ? 0.94 : 1))
+            .opacity(chosenID != nil && !isChosen ? 0.4 : 1)
+            .animation(.bouncy(duration: 0.25), value: chosenID)
         }
     }
 

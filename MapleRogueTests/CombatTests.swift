@@ -140,17 +140,36 @@ struct StarforceTests {
     }
 }
 
-struct GachaMachineTests {
+struct SkillChooserTests {
 
-    @Test func pityGuaranteesEpicOrBetter() {
-        // Always-high rolls would never naturally hit epic; pity must force it.
-        let machine = GachaMachine(pityThreshold: 5,
-                                   random: FixedRandomSource([0.99]))
-        var best: Rarity = .common
-        for _ in 0..<5 {
-            let skill = machine.pull(from: SkillRegistry.all)
-            best = max(best, skill.rarity)
+    @Test func offersThreeDistinctSkills() {
+        var chooser = SkillChooser()
+        for _ in 0..<50 {
+            let offer = chooser.offer(from: SkillRegistry.all)
+            #expect(offer.count == 3)
+            #expect(Set(offer.map(\.id)).count == 3, "duplicate skill in one offer")
         }
-        #expect(best >= .epic, "pity failed to force an epic within threshold")
+    }
+
+    @Test func lowRollsOfferCommons() {
+        // All-zero rolls: every rarity roll lands common, picks first candidate.
+        var chooser = SkillChooser(random: FixedRandomSource([0.0]))
+        let offer = chooser.offer(from: SkillRegistry.all)
+        #expect(offer.allSatisfy { $0.rarity == .common })
+    }
+
+    @Test func rarityDistributionRoughlyMatchesWeights() {
+        var chooser = SkillChooser()
+        var legendaries = 0
+        let trials = 3000
+        for _ in 0..<trials {
+            legendaries += chooser.offer(from: SkillRegistry.all)
+                .filter { $0.rarity == .legendary }.count
+        }
+        // ~1% per card × 3 cards × 3000 ≈ 90; allow generous slack for
+        // the distinctness re-roll skew.
+        let perCardRate = Double(legendaries) / Double(trials * 3)
+        #expect(perCardRate > 0.002 && perCardRate < 0.03,
+                "legendary rate \(perCardRate) far from ~1%")
     }
 }

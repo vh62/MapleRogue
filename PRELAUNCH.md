@@ -40,9 +40,15 @@ item off before the App Store submission build.
   or commission.
 - [ ] **Music — none exists.** Need: lobby loop, combat loop, boss theme
   (minimum viable: 2 tracks).
-- [ ] **Missing SFX to add with the real set**: gacha pull reveal (per
-  rarity), starforce success/fail/destroy, chest open, level up, button tap,
-  run victory/defeat stingers.
+- [ ] **Missing SFX to add with the real set**: skill-choice card select
+  (per rarity), starforce success/fail/destroy, cube roll/rank-up, chest
+  open, level up, button tap, run victory/defeat stingers.
+
+## Monetization note
+
+In-run skill selection is now free pick-1-of-3 (no tokens). Contextual
+IAP offers attach to the equipment gamble instead: safety charms
+(starforce), cube packs, gem top-ups at low-resource moments.
 
 ## Copy / Identity
 
