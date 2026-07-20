@@ -115,10 +115,15 @@ struct GearItem: Codable, Equatable, Identifiable {
     var atkPercent: Int {
         level * rarity.statMultiplier / 2 + starforceAtkPercent + potentialTotal(.pctATK)
     }
-    /// +8% attack per star.
-    var starforceAtkPercent: Int { stars * 8 }
-    /// Flat HP added while equipped (level + potential).
-    var bonusHP: Int { level * rarity.statMultiplier + potentialTotal(.flatHP) }
+    /// MapleStory split: weapon stars give attack, armor stars give HP.
+    /// +8% ATK per star (weapon only).
+    var starforceAtkPercent: Int { slot == .weapon ? stars * 8 : 0 }
+    /// +5 HP per star (armor slots only).
+    var starforceBonusHP: Int { slot == .weapon ? 0 : stars * 5 }
+    /// Flat HP added while equipped (level + starforce + potential).
+    var bonusHP: Int {
+        level * rarity.statMultiplier + starforceBonusHP + potentialTotal(.flatHP)
+    }
 
     var upgradeCost: Int { 15 * level * rarity.statMultiplier }
 

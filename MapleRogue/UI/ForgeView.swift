@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The Forge tab: two enhancement paths on your equipped gear.
-/// Starforce — stars on the weapon, destroy risk. Cubes — reroll potential
-/// stat lines and gamble on rank-ups, with pity.
+/// Starforce — stars on any equipped item (weapon stars = ATK, armor
+/// stars = HP), destroy risk. Cubes — reroll potential lines with pity.
 struct ForgeView: View {
 
     private enum Mode: String, CaseIterable {
@@ -13,6 +13,7 @@ struct ForgeView: View {
     @ObservedObject var profileVM: ProfileViewModel
 
     @State private var mode: Mode = .starforce
+    @State private var selectedSlot: GearSlot = .weapon
     @State private var lastOutcome: StarforceOutcome?
     @State private var isRolling = false
     @State private var shakeOffset: CGFloat = 0
@@ -53,13 +54,19 @@ struct ForgeView: View {
 
                 switch mode {
                 case .starforce:
-                    if let weapon = profileVM.forgeTarget {
-                        weaponCard(weapon)
-                        oddsPanel(weapon)
+                    slotPicker
+                    if let item = profileVM.equippedItem(in: selectedSlot) {
+                        itemCard(item)
+                        oddsPanel(item)
                         outcomeBanner
-                        enhanceButton(weapon)
-                    } else {
+                        enhanceButton(item)
+                    } else if selectedSlot == .weapon {
                         noWeaponPanel
+                    } else {
+                        Text("Nothing equipped in this slot")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .padding(.vertical, 30)
                     }
                 case .cube:
                     CubeSection(profileVM: profileVM)
@@ -105,9 +112,30 @@ struct ForgeView: View {
         }
     }
 
-    // MARK: - Weapon card
+    // MARK: - Slot picker
 
-    private func weaponCard(_ weapon: GearItem) -> some View {
+    private var slotPicker: some View {
+        HStack(spacing: 8) {
+            ForEach(GearSlot.allCases, id: \.self) { slot in
+                let item = profileVM.equippedItem(in: slot)
+                Button {
+                    selectedSlot = slot
+                    lastOutcome = nil
+                } label: {
+                    EquipSlotView(label: slot.rawValue,
+                                  rarity: item?.rarity,
+                                  level: item?.level,
+                                  size: 44)
+                        .overlay(RoundedRectangle(cornerRadius: 12)
+                            .stroke(selectedSlot == slot ? .yellow : .clear, lineWidth: 2))
+                }
+            }
+        }
+    }
+
+    // MARK: - Item card
+
+    private func itemCard(_ weapon: GearItem) -> some View {
         VStack(spacing: 10) {
             Image(systemName: "bolt.shield.fill")
                 .font(.system(size: 40))
@@ -120,9 +148,11 @@ struct ForgeView: View {
 
             starRow(weapon)
 
-            Text("+\(weapon.starforceAtkPercent)% ATK from stars  ·  \(weapon.rarity.displayName) Lv \(weapon.level)")
+            Text(weapon.slot == .weapon
+                 ? "+\(weapon.starforceAtkPercent)% ATK from stars  ·  \(weapon.rarity.displayName) Lv \(weapon.level)"
+                 : "+\(weapon.starforceBonusHP) HP from stars  ·  \(weapon.rarity.displayName) Lv \(weapon.level)")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(.orange)
+                .foregroundStyle(weapon.slot == .weapon ? .orange : .green)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
@@ -194,11 +224,11 @@ struct ForgeView: View {
     }
 
     private func enhanceButton(_ weapon: GearItem) -> some View {
-        let cost = profileVM.enhanceCost
+        let cost = profileVM.enhanceCost(for: weapon)
         let affordable = cost.map { profileVM.profile.mesos >= $0 } ?? false
 
         return Button {
-            roll()
+            roll(weapon)
         } label: {
             Text(cost.map { "ENHANCE  (\($0) mesos)" } ?? "MAX STARS")
                 .font(.system(size: 18, weight: .black, design: .rounded))
@@ -248,7 +278,7 @@ struct ForgeView: View {
 
     // MARK: - Roll with suspense
 
-    private func roll() {
+    private func roll(_ item: GearItem) {
         guard !isRolling else { return }
         isRolling = true
         lastOutcome = nil
@@ -261,7 +291,7 @@ struct ForgeView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
             shakeOffset = 0
             withAnimation(.bouncy) {
-                lastOutcome = profileVM.attemptStarforce()
+                lastOutcome = profileVM.attemptStarforce(on: item.id)
             }
             isRolling = false
         }

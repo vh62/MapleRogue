@@ -48,23 +48,18 @@ final class ProfileViewModel: ObservableObject {
         Double(profile.xp) / Double(max(1, xpToNextLevel))
     }
 
-    // MARK: - Starforce (Forge tab)
+    // MARK: - Starforce (Forge tab — any equipped slot)
 
-    /// The Forge works on the weapon equipped in the active preset.
-    var forgeTarget: GearItem? {
-        equippedItem(in: .weapon)
+    func enhanceCost(for item: GearItem) -> Int? {
+        guard item.stars < GearItem.maxStars else { return nil }
+        return StarforceTable.cost(forStar: item.stars)
     }
 
-    var enhanceCost: Int? {
-        guard let target = forgeTarget, target.stars < GearItem.maxStars else { return nil }
-        return StarforceTable.cost(forStar: target.stars)
-    }
-
-    /// Attempts an enhancement on the equipped weapon.
-    /// Returns nil if no weapon equipped, maxed, or unaffordable.
-    func attemptStarforce() -> StarforceOutcome? {
-        guard var target = forgeTarget,
-              let cost = enhanceCost,
+    /// Attempts an enhancement on an owned item.
+    /// Returns nil if not owned, maxed, or unaffordable.
+    func attemptStarforce(on itemID: UUID) -> StarforceOutcome? {
+        guard var target = item(withID: itemID),
+              let cost = enhanceCost(for: target),
               profile.mesos >= cost else { return nil }
 
         profile.mesos -= cost
@@ -299,7 +294,8 @@ final class ProfileViewModel: ObservableObject {
 
     /// Buys and equips a basic weapon when the slot is empty (post-destroy).
     func buyReplacementWeapon() {
-        guard forgeTarget == nil, profile.mesos >= replacementWeaponCost else { return }
+        guard equippedItem(in: .weapon) == nil,
+              profile.mesos >= replacementWeaponCost else { return }
         profile.mesos -= replacementWeaponCost
         let weapon = GearItem(slot: .weapon, rarity: .common, level: 1)
         profile.gearInventory.append(weapon)

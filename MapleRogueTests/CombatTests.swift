@@ -133,10 +133,19 @@ struct StarforceTests {
         #expect(system.attempt(on: &item) == nil)
     }
 
-    @Test func starsFeedAtkPercent() {
+    @Test func weaponStarsFeedAtkPercent() {
         let item = GearItem(slot: .weapon, rarity: .common, level: 4, stars: 3)
         // level 4 common: 4*1/2 = 2%, stars: 3*8 = 24%.
         #expect(item.atkPercent == 26)
+        #expect(item.starforceBonusHP == 0)
+    }
+
+    @Test func armorStarsFeedHPNotAtk() {
+        let item = GearItem(slot: .boots, rarity: .common, level: 4, stars: 3)
+        #expect(item.starforceAtkPercent == 0)
+        #expect(item.atkPercent == 2)          // level bonus only
+        #expect(item.starforceBonusHP == 15)   // 3 stars × 5
+        #expect(item.bonusHP == 4 + 15)        // level 4×1 + stars
     }
 }
 
