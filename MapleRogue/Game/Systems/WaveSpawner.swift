@@ -67,7 +67,7 @@ final class WaveSpawner {
     /// Random point inside the room, at least `minDistance` from the hero
     /// so enemies never spawn on top of the player.
     private func randomSpawnPoint(awayFrom heroPosition: CGPoint,
-                                  minDistance: CGFloat = 250) -> CGPoint {
+                                  minDistance: CGFloat = 300) -> CGPoint {
         let inset = roomRect.insetBy(dx: 60, dy: 60)
         for _ in 0..<20 {
             let point = CGPoint(x: .random(in: inset.minX...inset.maxX),

@@ -38,12 +38,13 @@ final class GameScene: SKScene {
     private var runState = RunState(totalRooms: 8)
     private var loadout = HeroLoadout()
     private var obstacleNodes: [SKNode] = []
+    private var dressingNodes: [SKNode] = []
 
     private var lastUpdateTime: TimeInterval = 0
     private var heroContactCooldown: TimeInterval = 0
     private var isTransitioning = false
 
-    private let roomSize = CGSize(width: 900, height: 900)
+    private let roomSize = CGSize(width: 900, height: 1700)
     private var roomRect: CGRect {
         CGRect(origin: CGPoint(x: -roomSize.width / 2, y: -roomSize.height / 2),
                size: roomSize)
@@ -108,6 +109,25 @@ final class GameScene: SKScene {
         }
     }
 
+    /// Decorative ground per room — path, grass, flowers, pebbles.
+    private func buildGroundDressing() {
+        dressingNodes.forEach { $0.removeFromParent() }
+        dressingNodes = GroundDressing.build(in: roomRect)
+        dressingNodes.forEach(addChild)
+    }
+
+    /// Subtle per-room tint so consecutive maps read as different places;
+    /// the boss map goes darker.
+    private func applyRoomTint() {
+        if runState.isFinalRoom {
+            backgroundColor = SKColor(red: 0.07, green: 0.06, blue: 0.10, alpha: 1)
+        } else {
+            let green = CGFloat.random(in: 0.10...0.15)
+            let red = CGFloat.random(in: 0.06...0.10)
+            backgroundColor = SKColor(red: red, green: green, blue: 0.07, alpha: 1)
+        }
+    }
+
     private func setupHero() {
         hero = HeroNode(maxHP: heroClass.maxHP + build.bonusHP,
                         moveSpeed: CGFloat(heroClass.moveSpeed),
@@ -115,7 +135,7 @@ final class GameScene: SKScene {
                                        green: heroClass.color.g,
                                        blue: heroClass.color.b,
                                        alpha: 1))
-        hero.position = CGPoint(x: 0, y: -300)
+        hero.position = CGPoint(x: 0, y: roomRect.minY + 120)
         addChild(hero)
         cameraNode.position = hero.position
         viewModel.heroHealthChanged(hero.health)
@@ -175,8 +195,11 @@ final class GameScene: SKScene {
     private func startRoom() {
         isTransitioning = false
         viewModel.roomChanged(current: runState.currentRoom, total: runState.totalRooms)
-        hero.position = CGPoint(x: 0, y: -300)
+        hero.position = CGPoint(x: 0, y: roomRect.minY + 120)
+        cameraNode.position = hero.position
         buildObstacles()
+        buildGroundDressing()
+        applyRoomTint()
 
         if runState.isFinalRoom {
             spawnBoss()
@@ -192,7 +215,7 @@ final class GameScene: SKScene {
     private func spawnBoss() {
         let behavior = KingSlimeBehavior()
         let boss = EnemyFactory.kingSlime(behavior: behavior)
-        boss.position = CGPoint(x: 0, y: 250)
+        boss.position = CGPoint(x: 0, y: roomRect.maxY - 400)
 
         behavior.onSummonMinions = { [weak self] origin in
             self?.summonMinions(around: origin)
@@ -334,6 +357,22 @@ final class GameScene: SKScene {
         let lerp: CGFloat = 0.12
         cameraNode.position.x += (hero.position.x - cameraNode.position.x) * lerp
         cameraNode.position.y += (hero.position.y - cameraNode.position.y) * lerp
+
+        // Clamp the view inside the map — the world ends at the walls.
+        let halfW = size.width / 2
+        let halfH = size.height / 2
+        if roomRect.width > size.width {
+            cameraNode.position.x = min(max(cameraNode.position.x, roomRect.minX + halfW),
+                                        roomRect.maxX - halfW)
+        } else {
+            cameraNode.position.x = 0
+        }
+        if roomRect.height > size.height {
+            cameraNode.position.y = min(max(cameraNode.position.y, roomRect.minY + halfH),
+                                        roomRect.maxY - halfH)
+        } else {
+            cameraNode.position.y = 0
+        }
     }
 }
 
