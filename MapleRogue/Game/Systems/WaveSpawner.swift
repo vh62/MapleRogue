@@ -9,16 +9,42 @@ final class WaveSpawner {
         self.roomRect = roomRect
     }
 
-    /// Wave composition per room. Slimes only early; mushrooms from room 2,
-    /// boogies from room 3, mixes ramping up from there.
-    private func waveComposition(forRoom room: Int) -> [() -> EnemyNode] {
-        let slimes = Swift.max(3, 4 + room - (room / 2))
-        let mushrooms = room >= 2 ? 1 + (room - 2) / 2 : 0
-        let boogies = room >= 3 ? 1 + (room - 3) / 2 : 0
+    /// Chance any spawned enemy is an elite (3× HP, 4× gold, bonus token).
+    var eliteChance = 0.08
 
-        return Array(repeating: EnemyFactory.slime, count: slimes)
-             + Array(repeating: EnemyFactory.mushroom, count: mushrooms)
-             + Array(repeating: EnemyFactory.boogie, count: boogies)
+    private enum WaveTheme: CaseIterable {
+        case standard   // balanced mix
+        case horde      // many weak slimes
+        case snipers    // boogie-heavy, mushroom bodyguards
+    }
+
+    /// Wave composition per room. Early rooms are always standard; from
+    /// room 3 a random theme keeps runs from blurring together.
+    private func waveComposition(forRoom room: Int) -> [(Bool) -> EnemyNode] {
+        let theme: WaveTheme = room >= 3 ? (WaveTheme.allCases.randomElement() ?? .standard) : .standard
+
+        let slimes: Int
+        let mushrooms: Int
+        let boogies: Int
+
+        switch theme {
+        case .standard:
+            slimes = Swift.max(3, 4 + room - (room / 2))
+            mushrooms = room >= 2 ? 1 + (room - 2) / 2 : 0
+            boogies = room >= 3 ? 1 + (room - 3) / 2 : 0
+        case .horde:
+            slimes = 8 + room
+            mushrooms = 0
+            boogies = 0
+        case .snipers:
+            slimes = 0
+            mushrooms = 2
+            boogies = 3 + room / 2
+        }
+
+        return Array(repeating: EnemyFactory.slime(elite:), count: slimes)
+             + Array(repeating: EnemyFactory.mushroom(elite:), count: mushrooms)
+             + Array(repeating: EnemyFactory.boogie(elite:), count: boogies)
     }
 
     /// Spawns the wave for `room` into the scene and returns the enemies.
@@ -29,7 +55,7 @@ final class WaveSpawner {
         var spawned: [EnemyNode] = []
 
         for makeEnemy in waveComposition(forRoom: room) {
-            let enemy = makeEnemy()
+            let enemy = makeEnemy(Double.random(in: 0..<1) < eliteChance)
             enemy.position = randomSpawnPoint(awayFrom: heroPosition)
             enemy.onDeath = onDeath
             scene.addChild(enemy)

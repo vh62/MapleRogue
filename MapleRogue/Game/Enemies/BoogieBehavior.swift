@@ -7,9 +7,9 @@ final class BoogieBehavior: EnemyBehavior {
 
     let preferredDistance: CGFloat = 300
     let distanceTolerance: CGFloat = 60
-    let moveSpeed: CGFloat = 70
+    let moveSpeed: CGFloat = 52
     let attackInterval: TimeInterval = 2.2
-    let projectileSpeed: CGFloat = 220
+    let projectileSpeed: CGFloat = 185
     let projectileDamage: Int = 8
 
     private var timeUntilNextShot: TimeInterval = .random(in: 0.5...2.0)

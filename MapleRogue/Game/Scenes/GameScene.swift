@@ -4,7 +4,9 @@ final class GameScene: SKScene {
 
     private let viewModel: GameViewModel
     private let heroClass: HeroClass
-    /// Class base damage with the weapon's starforce bonus applied.
+    /// Meta-progression contribution (gear levels, stars, cube potentials).
+    private let build: HeroBuild
+    /// Class base damage with the build's ATK bonus applied.
     private let baseDamage: Int
 
     private var hero: HeroNode!
@@ -12,18 +14,14 @@ final class GameScene: SKScene {
     private var joystick: Joystick!
     private var door: DoorNode!
 
-    /// Flat HP from equipped gear, added on top of class HP.
-    private let bonusHP: Int
-
     init(viewModel: GameViewModel,
          size: CGSize,
          heroClass: HeroClass = ClassRegistry.all[0],
-         weaponBonusPercent: Int = 0,
-         bonusHP: Int = 0) {
+         build: HeroBuild = HeroBuild()) {
         self.viewModel = viewModel
         self.heroClass = heroClass
-        self.baseDamage = heroClass.baseDamage + heroClass.baseDamage * weaponBonusPercent / 100
-        self.bonusHP = bonusHP
+        self.build = build
+        self.baseDamage = heroClass.baseDamage + heroClass.baseDamage * build.atkPercent / 100
         super.init(size: size)
         scaleMode = .resizeFill
     }
@@ -39,9 +37,7 @@ final class GameScene: SKScene {
     private let goldOrbs = GoldOrbSystem()
     private var runState = RunState(totalRooms: 8)
     private var loadout = HeroLoadout()
-
-    /// Rooms after which the gacha is offered.
-    private let gachaRooms: Set<Int> = [3, 6]
+    private var obstacleNodes: [SKNode] = []
 
     private var lastUpdateTime: TimeInterval = 0
     private var heroContactCooldown: TimeInterval = 0
@@ -63,8 +59,7 @@ final class GameScene: SKScene {
         setupHero()
         setupJoystick()
         setupGachaCallbacks()
-        autoAttack.damage = baseDamage
-        autoAttack.attackInterval = heroClass.attackInterval
+        applyCombatStats()
         startRoom()
     }
 
@@ -86,29 +81,35 @@ final class GameScene: SKScene {
         walls.physicsBody = wallBody
         addChild(walls)
 
-        let obstaclePositions = [CGPoint(x: -200, y: 150),
-                                 CGPoint(x: 220, y: -100),
-                                 CGPoint(x: 0, y: 280)]
-        for position in obstaclePositions {
-            let rock = SKShapeNode(rectOf: CGSize(width: 80, height: 80), cornerRadius: 12)
-            rock.fillColor = SKColor(white: 0.35, alpha: 1)
-            rock.strokeColor = SKColor(white: 0.5, alpha: 1)
-            rock.position = position
-
-            let rockBody = SKPhysicsBody(rectangleOf: CGSize(width: 80, height: 80))
-            rockBody.isDynamic = false
-            rockBody.categoryBitMask = PhysicsCategory.wall
-            rock.physicsBody = rockBody
-            addChild(rock)
-        }
-
         door = DoorNode()
         door.position = CGPoint(x: 0, y: roomRect.maxY)
         addChild(door)
     }
 
+    /// Obstacles are rebuilt every room from a random layout — same rocks
+    /// eight rooms in a row was a monotony machine.
+    private func buildObstacles() {
+        obstacleNodes.forEach { $0.removeFromParent() }
+        obstacleNodes.removeAll()
+
+        for obstacle in RoomLayouts.random() {
+            let size = CGSize(width: obstacle.width, height: obstacle.height)
+            let rock = SKShapeNode(rectOf: size, cornerRadius: 12)
+            rock.fillColor = SKColor(white: 0.35, alpha: 1)
+            rock.strokeColor = SKColor(white: 0.5, alpha: 1)
+            rock.position = CGPoint(x: obstacle.x, y: obstacle.y)
+
+            let rockBody = SKPhysicsBody(rectangleOf: size)
+            rockBody.isDynamic = false
+            rockBody.categoryBitMask = PhysicsCategory.wall
+            rock.physicsBody = rockBody
+            addChild(rock)
+            obstacleNodes.append(rock)
+        }
+    }
+
     private func setupHero() {
-        hero = HeroNode(maxHP: heroClass.maxHP + bonusHP,
+        hero = HeroNode(maxHP: heroClass.maxHP + build.bonusHP,
                         moveSpeed: CGFloat(heroClass.moveSpeed),
                         color: SKColor(red: heroClass.color.r,
                                        green: heroClass.color.g,
@@ -121,9 +122,11 @@ final class GameScene: SKScene {
     }
 
     private func setupJoystick() {
-        joystick = Joystick()
-        joystick.position = CGPoint(x: -size.width / 2 + 130,
-                                    y: -size.height / 2 + 150)
+        // Floating: the catch area spans the lower half of the screen;
+        // the stick appears wherever the thumb lands.
+        joystick = Joystick(catchSize: CGSize(width: size.width,
+                                              height: size.height * 0.55))
+        joystick.position = CGPoint(x: 0, y: -size.height * 0.22)
         cameraNode.addChild(joystick)
     }
 
@@ -142,19 +145,27 @@ final class GameScene: SKScene {
 
     private func applySkill(_ skill: SkillDefinition) {
         loadout.add(skill)
-
-        autoAttack.damage = loadout.damage(base: baseDamage)
-        autoAttack.attackInterval = loadout.attackInterval(base: heroClass.attackInterval)
-        autoAttack.extraProjectiles = loadout.extraProjectiles
-        autoAttack.pierceCount = loadout.pierceCount
-        autoAttack.damageRoller.critChance = CombatTuning.baseCritChance
-            + Double(loadout.critRatePercent) / 100
-        hero.moveSpeed = CGFloat(loadout.moveSpeed(base: heroClass.moveSpeed))
+        applyCombatStats()
 
         if case .maxHP(let bonus) = skill.effect {
             hero.increaseMaxHP(by: bonus)
             viewModel.heroHealthChanged(hero.health)
         }
+    }
+
+    /// Combines class base + gear build + in-run skill loadout into the
+    /// live combat systems. Called at setup and after every skill pickup.
+    private func applyCombatStats() {
+        autoAttack.damage = loadout.damage(base: baseDamage)
+        autoAttack.attackInterval = loadout.attackInterval(base: heroClass.attackInterval)
+        autoAttack.extraProjectiles = loadout.extraProjectiles
+        autoAttack.pierceCount = loadout.pierceCount
+        autoAttack.damageRoller.critChance = CombatTuning.baseCritChance
+            + Double(build.critRatePercent + loadout.critRatePercent) / 100
+        autoAttack.damageRoller.critMultiplier = CombatTuning.baseCritMultiplier
+            + Double(build.critDmgPercent) / 100
+        hero.moveSpeed = CGFloat(loadout.moveSpeed(
+            base: heroClass.moveSpeed * (1.0 + Double(build.moveSpeedPercent) / 100)))
     }
 
     // MARK: - Room flow
@@ -163,6 +174,7 @@ final class GameScene: SKScene {
         isTransitioning = false
         viewModel.roomChanged(current: runState.currentRoom, total: runState.totalRooms)
         hero.position = CGPoint(x: 0, y: -300)
+        buildObstacles()
 
         if runState.isFinalRoom {
             spawnBoss()
@@ -224,11 +236,16 @@ final class GameScene: SKScene {
         enemies.removeAll { $0 === dead }
         goldOrbs.drop(from: dead, in: self)
         viewModel.xpEarned(dead.xpValue)
+        viewModel.recordKill()
+        if dead.isElite {
+            viewModel.tokenEarned()   // elites drop a bonus skill token
+        }
         if enemies.isEmpty {
             door.open()
             SoundSystem.shared.play(.doorOpen, in: self)
             viewModel.tokenEarned()   // 1 skill token per room cleared
             viewModel.xpEarned(XPReward.roomCleared)
+            viewModel.recordRoomCleared()
         }
     }
 
@@ -236,14 +253,23 @@ final class GameScene: SKScene {
         guard !isTransitioning else { return }
         isTransitioning = true
 
+        // Vacuum all remaining floor gold the moment the player exits —
+        // before banking, before the gacha shows its gold count.
+        let remaining = goldOrbs.collectRemaining()
+        if remaining > 0 {
+            SoundSystem.shared.play(.pickup, in: self)
+            viewModel.goldCollected(remaining)
+        }
+
         if runState.isFinalRoom {
             viewModel.runCompleted()
             isPaused = true
             return
         }
 
-        // Gacha rooms interrupt the flow: show the pull screen, resume after.
-        if gachaRooms.contains(runState.currentRoom) {
+        // Gacha after every cleared room (when there's a token to spend) —
+        // the build should evolve constantly, Archero-style.
+        if viewModel.skillTokens > 0 {
             viewModel.beginGacha()
             isPaused = true
             return   // onGachaDismissed continues via performRoomTransition()
@@ -279,7 +305,8 @@ final class GameScene: SKScene {
         for child in children where child is EnemyProjectileNode {
             child.removeFromParent()
         }
-        // Auto-collect any gold left on the floor — never punish leaving early.
+        // Safety net — advanceToNextRoom already vacuumed; this catches
+        // restarts and any orbs spawned during the transition.
         viewModel.goldCollected(goldOrbs.collectRemaining())
         door = door.replacedWithClosedDoor(in: self, at: CGPoint(x: 0, y: roomRect.maxY))
         startRoom()
@@ -332,6 +359,7 @@ extension GameScene: SKPhysicsContactDelegate {
              let (enemy as EnemyNode, projectile as ProjectileNode):
             let wasAlive = !enemy.health.isDead
             enemy.applyDamage(projectile.damage)
+            viewModel.recordDamageDealt(projectile.damage)
             DamageNumber.show(DamageRoll(amount: projectile.damage, isCrit: projectile.isCrit),
                               at: enemy.position, in: self)
 
@@ -339,7 +367,7 @@ extension GameScene: SKPhysicsContactDelegate {
             if let velocity = projectile.physicsBody?.velocity {
                 let magnitude = hypot(velocity.dx, velocity.dy)
                 if magnitude > 1 {
-                    let shove: CGFloat = projectile.isCrit ? 55 : 30
+                    let shove: CGFloat = projectile.isCrit ? 38 : 20
                     enemy.physicsBody?.applyImpulse(CGVector(dx: velocity.dx / magnitude * shove,
                                                              dy: velocity.dy / magnitude * shove))
                 }
@@ -384,8 +412,14 @@ extension GameScene: SKPhysicsContactDelegate {
 
     private func damageHero(_ amount: Int) {
         hero.applyDamage(amount)
+        viewModel.recordDamageTaken(amount)
         SoundSystem.shared.play(.heroHit, in: self)
         shakeCamera(intensity: 7, duration: 0.2)
+        if hero.health.isDead {
+            // Floor gold counts even in death — banking runs inside the
+            // health-change notification, so vacuum first.
+            viewModel.goldCollected(goldOrbs.collectRemaining())
+        }
         viewModel.heroHealthChanged(hero.health)
         if hero.health.isDead {
             isPaused = true

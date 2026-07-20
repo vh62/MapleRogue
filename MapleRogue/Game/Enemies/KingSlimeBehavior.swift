@@ -15,10 +15,10 @@ final class KingSlimeBehavior: EnemyBehavior {
     private var timeUntilNextVolley: TimeInterval = 2.0
 
     // Tunables
-    let hopImpulse: CGFloat = 800           // boss body is heavy
+    let hopImpulse: CGFloat = 640           // boss body is heavy
     let volleyProjectiles = 8
     let volleyInterval: TimeInterval = 2.5
-    let volleySpeed: CGFloat = 190
+    let volleySpeed: CGFloat = 165
     let volleyDamage = 10
 
     func update(enemy: EnemyNode, heroPosition: CGPoint, deltaTime: TimeInterval) {
@@ -40,7 +40,7 @@ final class KingSlimeBehavior: EnemyBehavior {
                      deltaTime: TimeInterval, enraged: Bool) {
         timeUntilNextHop -= deltaTime
         guard timeUntilNextHop <= 0 else { return }
-        timeUntilNextHop = enraged ? 1.0 : 1.6
+        timeUntilNextHop = enraged ? 1.3 : 2.0
 
         let dx = heroPosition.x - enemy.position.x
         let dy = heroPosition.y - enemy.position.y

@@ -14,11 +14,11 @@ final class MushroomBehavior: EnemyBehavior {
 
     private var state: State = .approach
 
-    let waddleSpeed: CGFloat = 40
+    let waddleSpeed: CGFloat = 30
     let chargeRange: CGFloat = 260
     let telegraphDuration: TimeInterval = 0.6
-    let chargeImpulse: CGFloat = 260
-    let cooldownDuration: TimeInterval = 1.6
+    let chargeImpulse: CGFloat = 210
+    let cooldownDuration: TimeInterval = 2.0
 
     func update(enemy: EnemyNode, heroPosition: CGPoint, deltaTime: TimeInterval) {
         let dx = heroPosition.x - enemy.position.x

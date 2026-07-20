@@ -14,6 +14,7 @@ final class EnemyNode: SKNode, Damageable {
     let contactDamage: Int
     let goldValue: Int
     let xpValue: Int
+    let isElite: Bool
     private let behavior: EnemyBehavior
     private let body: SKShapeNode
     private let baseColor: SKColor
@@ -26,6 +27,7 @@ final class EnemyNode: SKNode, Damageable {
          contactDamage: Int,
          goldValue: Int,
          xpValue: Int = 2,
+         isElite: Bool = false,
          behavior: EnemyBehavior,
          radius: CGFloat,
          color: SKColor) {
@@ -33,13 +35,15 @@ final class EnemyNode: SKNode, Damageable {
         self.contactDamage = contactDamage
         self.goldValue = goldValue
         self.xpValue = xpValue
+        self.isElite = isElite
         self.behavior = behavior
         self.baseColor = color
 
         body = SKShapeNode(circleOfRadius: radius)
         body.fillColor = color
-        body.strokeColor = .white
-        body.lineWidth = 1.5
+        // Elites read instantly: gold outline, thicker stroke.
+        body.strokeColor = isElite ? SKColor(red: 1, green: 0.85, blue: 0.25, alpha: 1) : .white
+        body.lineWidth = isElite ? 3.5 : 1.5
 
         super.init()
         addChild(body)

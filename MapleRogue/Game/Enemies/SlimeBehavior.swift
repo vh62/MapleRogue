@@ -15,10 +15,10 @@ struct SlimeBehavior: EnemyBehavior {
     }
     private let state = HopState()
 
-    init(hopImpulse: CGFloat = 55,
-         hopInterval: TimeInterval = 1.2,
+    init(hopImpulse: CGFloat = 34,
+         hopInterval: TimeInterval = 1.7,
          aggroRadius: CGFloat = 320,
-         aimJitter: CGFloat = .pi / 5) {   // ±36°
+         aimJitter: CGFloat = .pi / 9) {   // ±20°
         self.hopImpulse = hopImpulse
         self.hopInterval = hopInterval
         self.aggroRadius = aggroRadius
@@ -39,13 +39,14 @@ struct SlimeBehavior: EnemyBehavior {
         if distance <= aggroRadius && distance > 1 {
             // Chase, but sloppily.
             angle = atan2(dy, dx) + .random(in: -aimJitter...aimJitter)
+            enemy.physicsBody?.applyImpulse(CGVector(dx: cos(angle) * hopImpulse,
+                                                     dy: sin(angle) * hopImpulse))
         } else {
-            // Out of aggro range: wander in a random direction.
-            angle = .random(in: -.pi ... .pi)
+            // Out of aggro range: meander gently in a random direction.
+            let wander = CGFloat.random(in: -.pi ... .pi)
+            enemy.physicsBody?.applyImpulse(CGVector(dx: cos(wander) * hopImpulse * 0.5,
+                                                     dy: sin(wander) * hopImpulse * 0.5))
         }
-
-        enemy.physicsBody?.applyImpulse(CGVector(dx: cos(angle) * hopImpulse,
-                                                 dy: sin(angle) * hopImpulse))
 
         // Squash-and-stretch for hop feel.
         enemy.run(.sequence([
@@ -57,33 +58,42 @@ struct SlimeBehavior: EnemyBehavior {
 
 /// Factory for enemy types — keeps tuning numbers in one place.
 enum EnemyFactory {
-    static func slime() -> EnemyNode {
-        EnemyNode(health: Health(max: 30),
-                  contactDamage: 10,
-                  goldValue: 5,
-                  xpValue: 2,
+
+    /// Elite variants: 3x HP, bigger, meaner, 4x gold, 3x XP.
+    private static func scaled(_ base: Int, elite: Bool, by factor: Int) -> Int {
+        elite ? base * factor : base
+    }
+
+    static func slime(elite: Bool = false) -> EnemyNode {
+        EnemyNode(health: Health(max: scaled(30, elite: elite, by: 3)),
+                  contactDamage: scaled(10, elite: elite, by: 2),
+                  goldValue: scaled(5, elite: elite, by: 4),
+                  xpValue: scaled(2, elite: elite, by: 3),
+                  isElite: elite,
                   behavior: SlimeBehavior(),
-                  radius: 18,
+                  radius: elite ? 27 : 18,
                   color: SKColor(red: 0.4, green: 0.75, blue: 0.35, alpha: 1))
     }
 
-    static func mushroom() -> EnemyNode {
-        EnemyNode(health: Health(max: 50),
-                  contactDamage: 15,
-                  goldValue: 12,
-                  xpValue: 5,
+    static func mushroom(elite: Bool = false) -> EnemyNode {
+        EnemyNode(health: Health(max: scaled(50, elite: elite, by: 3)),
+                  contactDamage: scaled(15, elite: elite, by: 2),
+                  goldValue: scaled(12, elite: elite, by: 4),
+                  xpValue: scaled(5, elite: elite, by: 3),
+                  isElite: elite,
                   behavior: MushroomBehavior(),
-                  radius: 20,
+                  radius: elite ? 30 : 20,
                   color: SKColor(red: 0.85, green: 0.45, blue: 0.3, alpha: 1))
     }
 
-    static func boogie() -> EnemyNode {
-        EnemyNode(health: Health(max: 20),
-                  contactDamage: 8,
-                  goldValue: 10,
-                  xpValue: 4,
+    static func boogie(elite: Bool = false) -> EnemyNode {
+        EnemyNode(health: Health(max: scaled(20, elite: elite, by: 3)),
+                  contactDamage: scaled(8, elite: elite, by: 2),
+                  goldValue: scaled(10, elite: elite, by: 4),
+                  xpValue: scaled(4, elite: elite, by: 3),
+                  isElite: elite,
                   behavior: BoogieBehavior(),
-                  radius: 15,
+                  radius: elite ? 23 : 15,
                   color: SKColor(red: 0.55, green: 0.4, blue: 0.8, alpha: 1))
     }
 }
