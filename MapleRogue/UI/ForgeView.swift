@@ -14,6 +14,7 @@ struct ForgeView: View {
 
     @State private var mode: Mode = .starforce
     @State private var selectedSlot: GearSlot = .weapon
+    @State private var selectedItemID: UUID?
     @State private var lastOutcome: StarforceOutcome?
     @State private var isRolling = false
     @State private var shakeOffset: CGFloat = 0
@@ -54,8 +55,10 @@ struct ForgeView: View {
 
                 switch mode {
                 case .starforce:
-                    slotPicker
-                    if let item = profileVM.equippedItem(in: selectedSlot) {
+                    ForgeItemPicker(profileVM: profileVM,
+                                    selectedSlot: $selectedSlot,
+                                    selectedItemID: $selectedItemID)
+                    if let id = selectedItemID, let item = profileVM.item(withID: id) {
                         itemCard(item)
                         oddsPanel(item)
                         outcomeBanner
@@ -63,7 +66,7 @@ struct ForgeView: View {
                     } else if selectedSlot == .weapon {
                         noWeaponPanel
                     } else {
-                        Text("Nothing equipped in this slot")
+                        Text("No items owned in this slot")
                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white.opacity(0.4))
                             .padding(.vertical, 30)
@@ -107,27 +110,6 @@ struct ForgeView: View {
                         .padding(.vertical, 8)
                         .background(mode == candidate ? AnyShapeStyle(.yellow) : AnyShapeStyle(.white.opacity(0.08)),
                                     in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-        }
-    }
-
-    // MARK: - Slot picker
-
-    private var slotPicker: some View {
-        HStack(spacing: 8) {
-            ForEach(GearSlot.allCases, id: \.self) { slot in
-                let item = profileVM.equippedItem(in: slot)
-                Button {
-                    selectedSlot = slot
-                    lastOutcome = nil
-                } label: {
-                    EquipSlotView(label: slot.rawValue,
-                                  rarity: item?.rarity,
-                                  level: item?.level,
-                                  size: 44)
-                        .overlay(RoundedRectangle(cornerRadius: 12)
-                            .stroke(selectedSlot == slot ? .yellow : .clear, lineWidth: 2))
                 }
             }
         }
@@ -246,10 +228,10 @@ struct ForgeView: View {
             Image(systemName: "xmark.octagon.fill")
                 .font(.system(size: 44))
                 .foregroundStyle(.red)
-            Text("No Weapon Equipped")
+            Text("No Weapon Owned")
                 .font(.system(size: 22, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
-            Text("Equip a weapon in the Character tab, or buy a basic one. If the stars claimed your blade — that is the way of starforce.")
+            Text("Buy a basic one to starforce, or win gear from chests and boss kills. If the stars claimed your blade — that is the way of starforce.")
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)

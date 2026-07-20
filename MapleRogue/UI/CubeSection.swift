@@ -18,6 +18,7 @@ struct CubeSection: View {
     @ObservedObject var profileVM: ProfileViewModel
 
     @State private var selectedSlot: GearSlot = .weapon
+    @State private var selectedItemID: UUID?
     @State private var selectedCube: String = CubeType.basic.id
     @State private var lastResult: CubeSystem.Result?
 
@@ -26,12 +27,14 @@ struct CubeSection: View {
     }
 
     private var target: GearItem? {
-        profileVM.equippedItem(in: selectedSlot)
+        selectedItemID.flatMap(profileVM.item(withID:))
     }
 
     var body: some View {
         VStack(spacing: 14) {
-            slotPicker
+            ForgeItemPicker(profileVM: profileVM,
+                            selectedSlot: $selectedSlot,
+                            selectedItemID: $selectedItemID)
 
             if let item = target {
                 if let pending = profileVM.pendingCube, pending.itemID == item.id {
@@ -43,7 +46,7 @@ struct CubeSection: View {
                     disclosure(item)
                 }
             } else {
-                Text("Nothing equipped in this slot")
+                Text("No items owned in this slot")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.4))
                     .padding(.vertical, 30)
@@ -146,28 +149,6 @@ struct CubeSection: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Slot picker
-
-    private var slotPicker: some View {
-        HStack(spacing: 8) {
-            ForEach(GearSlot.allCases, id: \.self) { slot in
-                let item = profileVM.equippedItem(in: slot)
-                Button {
-                    selectedSlot = slot
-                    lastResult = nil
-                } label: {
-                    EquipSlotView(label: slot.rawValue,
-                                  rarity: item?.rarity,
-                                  level: item?.level,
-                                  size: 44)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(selectedSlot == slot ? .yellow : .clear, lineWidth: 2))
-                }
-            }
-        }
     }
 
     // MARK: - Item + lines
