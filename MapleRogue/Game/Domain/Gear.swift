@@ -27,6 +27,16 @@ enum GearRarity: String, Codable, CaseIterable, Comparable {
 
     var displayName: String { rawValue.capitalized }
 
+    /// The next rank up, or nil at legendary.
+    init?(rawValueOrder current: GearRarity) {
+        switch current {
+        case .common: self = .rare
+        case .rare: self = .epic
+        case .epic: self = .legendary
+        case .legendary: return nil
+        }
+    }
+
     /// Stat multiplier per level.
     var statMultiplier: Int {
         switch self {
@@ -46,19 +56,28 @@ struct GearItem: Codable, Equatable, Identifiable {
 
     let id: UUID
     let slot: GearSlot
-    let rarity: GearRarity
+    /// Mutable: cubes can rank an item up.
+    private(set) var rarity: GearRarity
     private(set) var level: Int
     private(set) var stars: Int
+    /// Cube-rolled stat lines (see Cube.swift).
+    private(set) var potentialLines: [PotentialLine]
+    /// Failed rank-up attempts since the last rank-up (pity counter).
+    private(set) var cubePity: Int
 
-    init(id: UUID = UUID(), slot: GearSlot, rarity: GearRarity, level: Int = 1, stars: Int = 0) {
+    init(id: UUID = UUID(), slot: GearSlot, rarity: GearRarity, level: Int = 1,
+         stars: Int = 0, potentialLines: [PotentialLine] = [], cubePity: Int = 0) {
         self.id = id
         self.slot = slot
         self.rarity = rarity
         self.level = level
         self.stars = stars
+        self.potentialLines = potentialLines
+        self.cubePity = cubePity
     }
 
-    /// Tolerant decoding: `stars` was added after gear shipped to saves.
+    /// Tolerant decoding: stars/potential/pity were added after gear
+    /// shipped to saves.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -66,6 +85,8 @@ struct GearItem: Codable, Equatable, Identifiable {
         rarity = try container.decode(GearRarity.self, forKey: .rarity)
         level = try container.decode(Int.self, forKey: .level)
         stars = try container.decodeIfPresent(Int.self, forKey: .stars) ?? 0
+        potentialLines = try container.decodeIfPresent([PotentialLine].self, forKey: .potentialLines) ?? []
+        cubePity = try container.decodeIfPresent(Int.self, forKey: .cubePity) ?? 0
     }
 
     var name: String {
@@ -90,12 +111,14 @@ struct GearItem: Codable, Equatable, Identifiable {
         return Swift.max(1, level - 2 + rarityBump)
     }
 
-    /// Percent added to base attack while equipped (level + starforce).
-    var atkPercent: Int { level * rarity.statMultiplier / 2 + starforceAtkPercent }
+    /// Percent added to base attack while equipped (level + starforce + potential).
+    var atkPercent: Int {
+        level * rarity.statMultiplier / 2 + starforceAtkPercent + potentialTotal(.pctATK)
+    }
     /// +8% attack per star.
     var starforceAtkPercent: Int { stars * 8 }
-    /// Flat HP added while equipped.
-    var bonusHP: Int { level * rarity.statMultiplier }
+    /// Flat HP added while equipped (level + potential).
+    var bonusHP: Int { level * rarity.statMultiplier + potentialTotal(.flatHP) }
 
     var upgradeCost: Int { 15 * level * rarity.statMultiplier }
 
@@ -105,6 +128,28 @@ struct GearItem: Codable, Equatable, Identifiable {
 
     mutating func addStar() {
         stars = Swift.min(stars + 1, Self.maxStars)
+    }
+
+    // MARK: - Cube mutations (called by CubeSystem only)
+
+    mutating func incrementCubePity() {
+        cubePity += 1
+    }
+
+    mutating func rankUp() {
+        if let next = GearRarity(rawValueOrder: rarity) {
+            rarity = next
+        }
+        cubePity = 0
+    }
+
+    mutating func setPotential(_ lines: [PotentialLine]) {
+        potentialLines = lines
+    }
+
+    /// Sum of this item's potential values for one stat.
+    func potentialTotal(_ stat: PotentialStat) -> Int {
+        potentialLines.filter { $0.stat == stat }.reduce(0) { $0 + $1.value }
     }
 
     /// A modest random starter set so new profiles have something to equip.

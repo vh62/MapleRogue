@@ -6,6 +6,17 @@ enum CombatTuning {
     static let baseCritMultiplier = 1.5
 }
 
+/// Everything meta-progression contributes to a run, aggregated from
+/// equipped gear (levels, stars, cube potentials). Class stats are the
+/// base; this stacks on top.
+struct HeroBuild {
+    var atkPercent = 0
+    var bonusHP = 0
+    var critRatePercent = 0
+    var critDmgPercent = 0
+    var moveSpeedPercent = 0
+}
+
 /// Result of one damage computation.
 struct DamageRoll: Equatable {
     let amount: Int
