@@ -151,14 +151,14 @@ struct StarforceTests {
 
 struct PowerRatingTests {
 
-    private let baseClass = ClassRegistry.all[0]   // Dark Knight
+    private let baseClass = ClassRegistry.all[0]   // Dark Wanderer
 
-    @Test func knownComputation() {
-        // Empty build: ATK 14, APS 1/0.6, crit 5%×0.5 → factor 1.025,
-        // DPS = 14 × 1.6667 × 1.025 = 23.9167; EHP 130.
-        // Power = 23.9167×8 + 130×1.5 = 191.33 + 195 = 386 (×1 mobility).
+    @Test func darkWandererBaseline() {
+        // Empty build: ATK 13, APS 2, crit 5%×0.5 → factor 1.025,
+        // DPS = 13 × 2 × 1.025 = 26.65; EHP 110.
+        // Power = 26.65×8 + 110×1.5 = 213.2 + 165 = 378 (×1 mobility).
         let power = PowerRating.compute(heroClass: baseClass, build: HeroBuild())
-        #expect(power == 386)
+        #expect(power == 378)
     }
 
     @Test func everyAttributeRaisesPower() {
@@ -180,13 +180,10 @@ struct PowerRatingTests {
         #expect(PowerRating.compute(heroClass: baseClass, build: build) > base)
     }
 
-    @Test func classesAreComparable() {
-        // No class should dominate purely by formula shape.
-        let powers = ClassRegistry.all.map {
-            PowerRating.compute(heroClass: $0, build: HeroBuild())
-        }
-        let spread = Double(powers.max()!) / Double(powers.min()!)
-        #expect(spread < 1.5, "class base power spread \(spread) too wide: \(powers)")
+    @Test func legacyClassIDsResolveToLaunchHero() {
+        // Saves from the multi-class prototype must load the launch hero.
+        #expect(ClassRegistry.byID("dark_knight").id == "dark_wanderer")
+        #expect(ClassRegistry.byID("night_lord").id == "dark_wanderer")
     }
 }
 

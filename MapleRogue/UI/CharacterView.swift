@@ -41,7 +41,6 @@ struct CharacterView: View {
     @State private var subTab: SubTab = .equip
     @State private var selectedItem: GearItem?
     @State private var selectionIsEquipped = false
-    @State private var showClassPicker = false
     @State private var toast: String?
 
     var body: some View {
@@ -60,21 +59,6 @@ struct CharacterView: View {
             if let toast {
                 toastView(toast)
             }
-        }
-        .sheet(isPresented: $showClassPicker) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
-                    Text("Choose Your Class")
-                        .font(.system(size: 20, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.top, 20)
-                    ClassListSection(profileVM: profileVM)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
-                }
-            }
-            .presentationDetents([.medium, .large])
-            .presentationBackground(Color.ctSheet)
         }
         .sheet(item: $selectedItem) { item in
             ItemSheet(item: item,
@@ -104,10 +88,7 @@ struct CharacterView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Button {
-                showClassPicker = true
-            } label: {
-                ZStack(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottomTrailing) {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(LinearGradient(colors: [.ctYellow, Color(red: 0.88, green: 0.48, blue: 0.22)],
                                              startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -127,7 +108,6 @@ struct CharacterView: View {
                         .overlay(RoundedRectangle(cornerRadius: 6)
                             .stroke(Color(red: 0.04, green: 0.23, blue: 0.12), lineWidth: 1.5))
                         .offset(x: 4, y: 4)
-                }
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -661,71 +641,3 @@ private struct ItemSheet: View {
     }
 }
 
-// MARK: - Class selection (kept from the previous Character tab)
-
-private struct ClassListSection: View {
-
-    @ObservedObject var profileVM: ProfileViewModel
-
-    var body: some View {
-        VStack(spacing: 10) {
-            ForEach(ClassRegistry.all) { heroClass in
-                let tint = Color(red: heroClass.color.r, green: heroClass.color.g, blue: heroClass.color.b)
-                let unlocked = profileVM.isUnlocked(heroClass)
-                let selected = profileVM.profile.selectedClassID == heroClass.id
-
-                Button {
-                    unlocked ? profileVM.selectClass(heroClass) : profileVM.unlockClass(heroClass)
-                } label: {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(tint.opacity(unlocked ? 0.9 : 0.3))
-                            .overlay {
-                                if !unlocked {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.white.opacity(0.8))
-                                }
-                            }
-                            .frame(width: 40, height: 40)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(heroClass.name)
-                                .font(.system(size: 15, weight: .heavy, design: .rounded))
-                                .foregroundStyle(.white)
-                            Text(heroClass.blurb)
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.5))
-                                .lineLimit(1)
-                        }
-
-                        Spacer()
-
-                        if selected {
-                            Text("SELECTED")
-                                .font(.system(size: 9, weight: .black, design: .rounded))
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(tint, in: Capsule())
-                        } else if !unlocked {
-                            Text("\(heroClass.unlockCost)")
-                                .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                .foregroundStyle(profileVM.profile.mesos >= heroClass.unlockCost ? .black : .white.opacity(0.35))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(profileVM.profile.mesos >= heroClass.unlockCost
-                                            ? AnyShapeStyle(Color(red: 1.0, green: 0.82, blue: 0.25))
-                                            : AnyShapeStyle(.white.opacity(0.08)),
-                                            in: RoundedRectangle(cornerRadius: 8))
-                        }
-                    }
-                    .padding(10)
-                    .background(.white.opacity(selected ? 0.12 : 0.06), in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14)
-                        .stroke(selected ? tint : .white.opacity(0.08), lineWidth: selected ? 2 : 1))
-                }
-            }
-        }
-    }
-}

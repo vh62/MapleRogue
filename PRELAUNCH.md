@@ -5,9 +5,9 @@ item off before the App Store submission build.
 
 ## Art
 
-- [ ] **Hero sprites** — currently colored circles with a white "nose"
-  (`HeroNode.swift`). Need per-class sprites with walk/attack animations
-  (5 classes × 4 directions).
+- [ ] **Hero sprite** — currently a colored circle with a white "nose"
+  (`HeroNode.swift`). ONE hero at launch (the Dark Wanderer): sprites
+  with walk/attack animations, 4 directions. (More heroes post-launch.)
 - [ ] **Enemy sprites** — colored circles (`EnemyNode` + factories in
   `Game/Enemies/`). Need: Slime, Mushroom, Jr. Boogie idle/move/death.
 - [ ] **King Slime boss sprite** — large blue circle. Needs real art +
@@ -52,8 +52,9 @@ IAP offers attach to the equipment gamble instead: safety charms
 
 ## Copy / Identity
 
-- [ ] **Game name** — "MapleRogue" references Nexon's IP. Legal risk in a
-  commercial App Store release; pick an original name before submission.
+- [x] **Game name** — chosen: **Dark Wanderer** (display name set in the
+  Xcode project; internal module still MapleRogue, invisible to players).
+  TODO: App Store search for name collisions before building marketing.
 - [ ] **MapleStory-derived names in code/UI** — "Henesys Ruins", "Mesos",
   enemy names (Jr. Boogie, King Slime), class names (Dark Knight, Night
   Lord, etc.), item names (Emberfang Axe is fine; check the rest). Rename

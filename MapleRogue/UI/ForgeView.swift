@@ -32,7 +32,7 @@ struct ForgeView: View {
                     Text("Forge unlocks at Lv 3")
                         .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
-                    Text("Keep running Henesys Ruins to level up")
+                    Text("Keep running Chapter 1 to level up")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white.opacity(0.4))
 
