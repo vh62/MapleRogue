@@ -64,6 +64,7 @@ final class GameScene: SKScene {
         setupGachaCallbacks()
         applyCombatStats()
         startRoom()
+        viewModel.offerStarterSkill()
     }
 
     // MARK: - Setup
@@ -224,6 +225,15 @@ final class GameScene: SKScene {
         buildGroundDressing()
         applyRoomTint()
 
+        // Let the player take the map in before the fight starts.
+        removeAction(forKey: "spawnWave")
+        run(.sequence([
+            .wait(forDuration: 2.0),
+            .run { [weak self] in self?.spawnCurrentWave() },
+        ]), withKey: "spawnWave")
+    }
+
+    private func spawnCurrentWave() {
         if runState.isFinalRoom {
             spawnBoss()
         } else {
@@ -231,6 +241,12 @@ final class GameScene: SKScene {
                                             in: self,
                                             avoiding: hero.position) { [weak self] dead in
                 self?.handleEnemyDeath(dead)
+            }
+            // Pop-in so the wave arrives, rather than blinks into place.
+            for enemy in enemies {
+                let scale = enemy.xScale
+                enemy.setScale(0.1)
+                enemy.run(.scale(to: scale, duration: 0.25))
             }
         }
     }

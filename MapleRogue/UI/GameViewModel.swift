@@ -68,6 +68,14 @@ final class GameViewModel: ObservableObject {
         offerSkillIfIdle()
     }
 
+    /// Archero-style run opener: the first skill choice comes free the
+    /// moment the map loads.
+    func offerStarterSkill() {
+        guard phase == .playing else { return }
+        beginSkillChoice()
+        onSkillChoiceStarted?()
+    }
+
     private func offerSkillIfIdle() {
         guard phase == .playing, pendingLevelUps > 0 else { return }
         pendingLevelUps -= 1
