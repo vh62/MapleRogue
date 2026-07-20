@@ -94,7 +94,7 @@ struct CharacterView: View {
                           selectedItem = nil
                       },
                       onClose: { selectedItem = nil })
-                .presentationDetents([.height(230)])
+                .presentationDetents([.height(430)])
                 .presentationBackground(Color.ctSheet)
         }
     }
@@ -470,42 +470,134 @@ private struct ItemSheet: View {
         mesos >= item.upgradeCost
     }
 
+    /// 20 stars in groups of five, filled by enhancement level.
+    private var starRow: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<4, id: \.self) { group in
+                HStack(spacing: 2) {
+                    ForEach(0..<5, id: \.self) { index in
+                        let star = group * 5 + index
+                        Image(systemName: star < item.stars ? "star.fill" : "star")
+                            .font(.system(size: 9))
+                            .foregroundStyle(star < item.stars ? .yellow : .white.opacity(0.25))
+                    }
+                }
+            }
+        }
+    }
+
+    private func statLine(label: String, total: String, base: Int, stars: Int,
+                          potential: Int, suffix: String) -> some View {
+        HStack(spacing: 4) {
+            Text("\(label) :")
+                .foregroundStyle(.white.opacity(0.6))
+            Text(total)
+                .foregroundStyle(.white)
+            (Text("(\(base)\(suffix)")
+                .foregroundColor(.white.opacity(0.5))
+             + Text(stars > 0 ? " +\(stars)\(suffix)" : "")
+                .foregroundColor(.orange)
+             + Text(potential > 0 ? " +\(potential)\(suffix)" : "")
+                .foregroundColor(Color.ctGreenLight)
+             + Text(")")
+                .foregroundColor(.white.opacity(0.5)))
+        }
+        .font(.system(size: 13, weight: .bold, design: .rounded))
+    }
+
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 14) {
+        VStack(spacing: 12) {
+            // ★ Star row — enhancement state first, MapleStory-style.
+            starRow
+
+            // Name + rarity, centered like the classic tooltip.
+            VStack(spacing: 2) {
+                Text(item.name)
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundStyle(item.rarity.color)
+                Text(item.rarity.displayName.uppercased())
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .kerning(1)
+                    .foregroundStyle(item.rarity.color.opacity(0.7))
+            }
+
+            HStack(alignment: .top, spacing: 14) {
                 EquipSlotView(label: item.slot.rawValue,
                               rarity: item.rarity,
                               level: item.level,
                               size: 64)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.name)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text("\(item.rarity.displayName) · Lv \(item.level)")
+                    Text("REQ LEV : \(item.requiredLevel)")
                         .font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .foregroundStyle(item.rarity.color)
-                    Text("⚔ +\(item.atkPercent)% ATK  ·  ♥ +\(item.bonusHP) HP")
+                        .foregroundStyle(canWear ? .white.opacity(0.6) : Color(red: 1, green: 0.45, blue: 0.4))
+                    Text("Item Type : \(item.slot.rawValue.capitalized)")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.6))
-                    Text("Requires Lv \(item.requiredLevel)")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(canWear ? .white.opacity(0.45) : Color(red: 1, green: 0.45, blue: 0.4))
+                        .foregroundStyle(.white.opacity(0.5))
+                    if isEquipped {
+                        HStack(spacing: 4) {
+                            Circle().fill(.yellow).frame(width: 8, height: 8)
+                            Text("\(mesos) mesos")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundStyle(canAffordUpgrade ? .white.opacity(0.7) : Color(red: 1, green: 0.45, blue: 0.4))
+                        }
+                    }
                 }
                 Spacer()
+            }
 
-                if isEquipped {
-                    HStack(spacing: 4) {
-                        Circle().fill(.yellow).frame(width: 8, height: 8)
-                        Text("\(mesos)")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundStyle(canAffordUpgrade ? .white : Color(red: 1, green: 0.45, blue: 0.4))
+            Divider().overlay(.white.opacity(0.15))
+
+            // Stat breakdown: total (base +stars +potential), sources colored.
+            VStack(alignment: .leading, spacing: 5) {
+                statLine(label: "ATK",
+                         total: "+\(item.atkPercent)%",
+                         base: item.level * item.rarity.statMultiplier / 2,
+                         stars: item.starforceAtkPercent,
+                         potential: item.potentialTotal(.pctATK),
+                         suffix: "%")
+                statLine(label: "MaxHP",
+                         total: "+\(item.bonusHP)",
+                         base: item.level * item.rarity.statMultiplier,
+                         stars: item.starforceBonusHP,
+                         potential: item.potentialTotal(.flatHP),
+                         suffix: "")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider().overlay(.white.opacity(0.15))
+
+            // Potential section — the gamble results get their own home.
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.ctGreen)
+                        .frame(width: 10, height: 10)
+                        .rotationEffect(.degrees(45))
+                    Text("Potential")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.ctGreenLight)
+                }
+                if item.potentialLines.isEmpty {
+                    Text("None — use a cube in the Forge to unlock")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.4))
+                } else {
+                    ForEach(item.potentialLines) { line in
+                        HStack(spacing: 5) {
+                            if line.isPrime {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(.yellow)
+                            }
+                            Text(line.stat.format(line.value))
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(line.isPrime ? .yellow : Color.ctGreenLight)
+                        }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.white.opacity(0.08), in: Capsule())
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 10) {
                 Button(action: onClose) {
