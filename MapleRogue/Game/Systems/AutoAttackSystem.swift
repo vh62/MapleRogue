@@ -33,9 +33,7 @@ final class AutoAttackSystem {
         guard !heroIsMoving else { return }
         guard timeUntilNextShot <= 0 else { return }
 
-        guard let target = nearestVisibleEnemy(from: heroPosition,
-                                               enemies: enemies,
-                                               in: scene) else { return }
+        guard let target = nearestEnemy(from: heroPosition, enemies: enemies) else { return }
 
         timeUntilNextShot = attackInterval
         SoundSystem.shared.play(.shoot, in: scene)
@@ -59,29 +57,15 @@ final class AutoAttackSystem {
         }
     }
 
-    private func nearestVisibleEnemy(from origin: CGPoint,
-                                     enemies: [EnemyNode],
-                                     in scene: SKScene) -> EnemyNode? {
+    /// Deliberately ignores walls: shots at hidden enemies splat against
+    /// cover, telegraphing where the threat is — the misses are information.
+    private func nearestEnemy(from origin: CGPoint, enemies: [EnemyNode]) -> EnemyNode? {
         enemies
             .filter { !$0.health.isDead }
             .map { (enemy: $0, distance: hypot($0.position.x - origin.x,
                                                $0.position.y - origin.y)) }
             .filter { $0.distance <= range }
-            .sorted { $0.distance < $1.distance }
-            .first { hasLineOfSight(from: origin, to: $0.enemy.position, in: scene) }?
+            .min { $0.distance < $1.distance }?
             .enemy
-    }
-
-    private func hasLineOfSight(from origin: CGPoint,
-                                to target: CGPoint,
-                                in scene: SKScene) -> Bool {
-        var blocked = false
-        scene.physicsWorld.enumerateBodies(alongRayStart: origin, end: target) { body, _, _, stop in
-            if body.categoryBitMask == PhysicsCategory.wall {
-                blocked = true
-                stop.pointee = true
-            }
-        }
-        return !blocked
     }
 }
