@@ -229,6 +229,8 @@ struct RunEndOverlay: View {
                     }
                     .font(.system(size: 15, weight: .bold, design: .rounded))
 
+                    runStatsGrid
+
                     if let newLevel = viewModel.leveledUpTo {
                         Text("LEVEL UP!  Lv \(newLevel)")
                             .font(.system(size: 24, weight: .black, design: .rounded))
@@ -238,6 +240,8 @@ struct RunEndOverlay: View {
                             .background(.yellow.opacity(0.15), in: Capsule())
                             .overlay(Capsule().stroke(.yellow.opacity(0.5), lineWidth: 1.5))
                     }
+
+                    skillsRecap
 
                     Button {
                         viewModel.restart()
@@ -257,6 +261,59 @@ struct RunEndOverlay: View {
                             .padding(.horizontal, 32)
                             .padding(.vertical, 10)
                             .background(.white.opacity(0.15), in: Capsule())
+                    }
+                }
+            }
+        }
+    }
+    private var runStatsGrid: some View {
+        HStack(spacing: 18) {
+            statCell("Kills", "\(viewModel.kills)")
+            statCell("Dealt", "\(viewModel.damageDealt)")
+            statCell("Taken", "\(viewModel.damageTaken)")
+            statCell("Time", formatDuration(viewModel.runDuration))
+            if !viewModel.roomDurations.isEmpty {
+                statCell("Avg room", formatDuration(viewModel.averageRoomTime))
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func statCell(_ label: String, _ value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+            Text(label)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.45))
+        }
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds)
+        return total >= 60 ? "\(total / 60)m \(total % 60)s" : "\(total)s"
+    }
+
+    /// The build you died with — fuels "next run I'll go X" theorycrafting.
+    @ViewBuilder
+    private var skillsRecap: some View {
+        if !viewModel.acquiredSkills.isEmpty {
+            VStack(spacing: 6) {
+                Text("YOUR BUILD")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .kerning(1)
+                    .foregroundStyle(.white.opacity(0.4))
+                HStack(spacing: 6) {
+                    ForEach(viewModel.acquiredSkills.prefix(6)) { skill in
+                        Text(skill.name)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.85))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.white.opacity(0.1), in: Capsule())
                     }
                 }
             }

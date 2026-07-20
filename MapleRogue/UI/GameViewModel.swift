@@ -54,6 +54,29 @@ final class GameViewModel: ObservableObject {
         runXP += amount
     }
 
+    // MARK: - Run stats (balance instrumentation + run summary)
+
+    @Published private(set) var kills: Int = 0
+    @Published private(set) var damageDealt: Int = 0
+    @Published private(set) var damageTaken: Int = 0
+    private var runStart = Date()
+    private var roomStart = Date()
+    private(set) var roomDurations: [TimeInterval] = []
+
+    var runDuration: TimeInterval { Date().timeIntervalSince(runStart) }
+    var averageRoomTime: TimeInterval {
+        roomDurations.isEmpty ? 0 : roomDurations.reduce(0, +) / Double(roomDurations.count)
+    }
+
+    func recordKill() { kills += 1 }
+    func recordDamageDealt(_ amount: Int) { damageDealt += amount }
+    func recordDamageTaken(_ amount: Int) { damageTaken += amount }
+
+    func recordRoomCleared() {
+        roomDurations.append(Date().timeIntervalSince(roomStart))
+        roomStart = Date()
+    }
+
     // MARK: - Scene-facing updates
 
     func heroHealthChanged(_ health: Health) {
@@ -162,6 +185,12 @@ final class GameViewModel: ObservableObject {
         runBanked = false
         runXP = 0
         leveledUpTo = nil
+        kills = 0
+        damageDealt = 0
+        damageTaken = 0
+        roomDurations = []
+        runStart = Date()
+        roomStart = Date()
         onRestartRequested?()
     }
 }
