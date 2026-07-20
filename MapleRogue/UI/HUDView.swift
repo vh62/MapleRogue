@@ -8,8 +8,9 @@ struct HUDView: View {
     var body: some View {
         VStack {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     healthBar
+                    runLevelBar
                     pauseButton
                 }
                 Spacer()
@@ -96,6 +97,27 @@ struct HUDView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
         .background(.black.opacity(0.5), in: Capsule())
+    }
+
+    private var runLevelBar: some View {
+        HStack(spacing: 6) {
+            Text("Lv \(viewModel.runLevel)")
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .foregroundStyle(.cyan)
+            ZStack(alignment: .leading) {
+                Capsule().fill(.black.opacity(0.5))
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(.cyan)
+                        .frame(width: geo.size.width * viewModel.runLevelFraction)
+                        .animation(.easeOut(duration: 0.2), value: viewModel.runLevelFraction)
+                }
+            }
+            .frame(width: 110, height: 7)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.black.opacity(0.35), in: Capsule())
     }
 
     private var pauseButton: some View {
@@ -226,6 +248,8 @@ struct RunEndOverlay: View {
                             .overlay(Capsule().stroke(.yellow.opacity(0.5), lineWidth: 1.5))
                     }
 
+                    victoryLootCard
+
                     skillsRecap
 
                     Button {
@@ -280,6 +304,36 @@ struct RunEndOverlay: View {
     private func formatDuration(_ seconds: TimeInterval) -> String {
         let total = Int(seconds)
         return total >= 60 ? "\(total / 60)m \(total % 60)s" : "\(total)s"
+    }
+
+    /// Boss drop, victory only.
+    @ViewBuilder
+    private var victoryLootCard: some View {
+        if viewModel.phase == .victory, let loot = viewModel.victoryLoot {
+            VStack(spacing: 8) {
+                Text("BOSS LOOT")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .kerning(1)
+                    .foregroundStyle(.yellow.opacity(0.8))
+                HStack(spacing: 12) {
+                    EquipSlotView(label: loot.slot.rawValue,
+                                  rarity: loot.rarity,
+                                  level: loot.level,
+                                  size: 52)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loot.name)
+                            .font(.system(size: 15, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("\(loot.rarity.displayName) · added to inventory")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                }
+                .padding(12)
+                .background(.yellow.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.yellow.opacity(0.4), lineWidth: 1))
+            }
+        }
     }
 
     /// The build you died with — fuels "next run I'll go X" theorycrafting.

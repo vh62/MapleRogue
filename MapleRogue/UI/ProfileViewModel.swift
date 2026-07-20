@@ -133,6 +133,14 @@ final class ProfileViewModel: ObservableObject {
         profile.mesos >= chest.cost.mesos && profile.gems >= chest.cost.gems
     }
 
+    /// Boss kill reward: a free premium-odds gear roll into the inventory.
+    func rollVictoryLoot() -> GearItem {
+        let item = chests.open(.premium)
+        profile.gearInventory.append(item)
+        persist()
+        return item
+    }
+
     // MARK: - Classes (Character tab)
 
     var selectedClass: HeroClass {

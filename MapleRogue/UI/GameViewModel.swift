@@ -31,8 +31,10 @@ final class GameViewModel: ObservableObject {
 
     /// Set by the scene: applies a pulled skill to the live run.
     var onSkillAcquired: ((SkillDefinition) -> Void)?
-    /// Set by the scene: resumes the run after the gacha closes.
-    var onGachaDismissed: (() -> Void)?
+    /// Set by the scene: freezes combat when a level-up offers skills.
+    var onSkillChoiceStarted: (() -> Void)?
+    /// Set by the scene: resumes combat after the choice resolves.
+    var onSkillChoiceEnded: (() -> Void)?
     /// Set by the scene: freezes/unfreezes the SpriteKit scene.
     var onPauseChanged: ((Bool) -> Void)?
 
@@ -47,8 +49,30 @@ final class GameViewModel: ObservableObject {
     /// Set after banking when the account leveled up (new level number).
     @Published var leveledUpTo: Int?
 
+    // In-run leveling: XP fills the bar; level-ups grant skill choices.
+    private var runLeveling = RunLeveling()
+    @Published private(set) var runLevel: Int = 1
+    @Published private(set) var runLevelFraction: Double = 0
+    private var pendingLevelUps = 0
+    /// Boss loot revealed on the victory screen.
+    @Published var victoryLoot: GearItem?
+
     func xpEarned(_ amount: Int) {
         runXP += amount
+        let levelUps = runLeveling.gain(amount)
+        runLevel = runLeveling.level
+        runLevelFraction = runLeveling.fraction
+
+        guard levelUps > 0 else { return }
+        pendingLevelUps += levelUps
+        offerSkillIfIdle()
+    }
+
+    private func offerSkillIfIdle() {
+        guard phase == .playing, pendingLevelUps > 0 else { return }
+        pendingLevelUps -= 1
+        beginSkillChoice()
+        onSkillChoiceStarted?()
     }
 
     // MARK: - Run stats (balance instrumentation + run summary)
@@ -142,7 +166,7 @@ final class GameViewModel: ObservableObject {
 
     // MARK: - Skill choice (pick 1 of 3, Archero-style)
 
-    func beginSkillChoice() {
+    private func beginSkillChoice() {
         offeredSkills = skillChooser.offer(from: SkillRegistry.all)
         phase = .skillChoice
     }
@@ -162,7 +186,12 @@ final class GameViewModel: ObservableObject {
     private func finishSkillChoice() {
         offeredSkills = []
         phase = .playing
-        onGachaDismissed?()
+        // Burst XP can bank several level-ups — chain the choosers.
+        if pendingLevelUps > 0 {
+            offerSkillIfIdle()
+        } else {
+            onSkillChoiceEnded?()
+        }
     }
 
     // MARK: - UI-facing actions
@@ -176,6 +205,11 @@ final class GameViewModel: ObservableObject {
         gold = 0
         offeredSkills = []
         acquiredSkills = []
+        runLeveling = RunLeveling()
+        runLevel = 1
+        runLevelFraction = 0
+        pendingLevelUps = 0
+        victoryLoot = nil
         bossHealthFraction = nil
         runBanked = false
         runXP = 0

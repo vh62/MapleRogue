@@ -134,9 +134,11 @@ final class GameScene: SKScene {
         viewModel.onSkillAcquired = { [weak self] skill in
             self?.applySkill(skill)
         }
-        viewModel.onGachaDismissed = { [weak self] in
+        viewModel.onSkillChoiceStarted = { [weak self] in
+            self?.isPaused = true
+        }
+        viewModel.onSkillChoiceEnded = { [weak self] in
             self?.isPaused = false
-            self?.performRoomTransition()
         }
         viewModel.onPauseChanged = { [weak self] paused in
             self?.isPaused = paused
@@ -263,10 +265,7 @@ final class GameScene: SKScene {
             return
         }
 
-        // Pick-1-of-3 skill choice after every cleared room.
-        viewModel.beginSkillChoice()
-        isPaused = true
-        // onGachaDismissed continues via performRoomTransition()
+        performRoomTransition()
     }
 
     private func performRoomTransition() {

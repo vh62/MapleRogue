@@ -35,6 +35,9 @@ struct GameView: View {
                 if levelsGained > 0 {
                     viewModel.leveledUpTo = profileVM.profile.level
                 }
+                if victory {
+                    viewModel.victoryLoot = profileVM.rollVictoryLoot()
+                }
             }
         }
     }

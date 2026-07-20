@@ -140,6 +140,33 @@ struct StarforceTests {
     }
 }
 
+struct RunLevelingTests {
+
+    @Test func curveValues() {
+        var leveling = RunLeveling()
+        #expect(leveling.xpToNext == 25)   // 15 + 10×1
+        _ = leveling.gain(25)
+        #expect(leveling.level == 2)
+        #expect(leveling.xpToNext == 35)   // 15 + 10×2
+    }
+
+    @Test func burstGainCrossesMultipleLevels() {
+        var leveling = RunLeveling()
+        // 25 (1→2) + 35 (2→3) = 60; 70 XP leaves 10 into level 3.
+        let ups = leveling.gain(70)
+        #expect(ups == 2)
+        #expect(leveling.level == 3)
+        #expect(leveling.xpIntoLevel == 10)
+    }
+
+    @Test func belowThresholdNoLevelUp() {
+        var leveling = RunLeveling()
+        #expect(leveling.gain(24) == 0)
+        #expect(leveling.level == 1)
+        #expect(leveling.xpIntoLevel == 24)
+    }
+}
+
 struct SkillChooserTests {
 
     @Test func offersThreeDistinctSkills() {
