@@ -45,7 +45,7 @@ final class GameScene: SKScene {
     private var heroContactCooldown: TimeInterval = 0
     private var isTransitioning = false
 
-    private let roomSize = CGSize(width: 900, height: 1700)
+    private let roomSize = CGSize(width: 820, height: 1180)
     private var roomRect: CGRect {
         CGRect(origin: CGPoint(x: -roomSize.width / 2, y: -roomSize.height / 2),
                size: roomSize)

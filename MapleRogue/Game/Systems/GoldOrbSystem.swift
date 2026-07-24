@@ -5,9 +5,9 @@ import SpriteKit
 final class GoldOrbSystem {
 
     // Tunables
-    var magnetRadius: CGFloat = 140
-    var collectRadius: CGFloat = 34
-    var pullSpeed: CGFloat = 420
+    var magnetRadius: CGFloat = 240
+    var collectRadius: CGFloat = 60
+    var pullSpeed: CGFloat = 520
 
     private var orbs: [GoldOrbNode] = []
 
